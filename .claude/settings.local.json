@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --yes)",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --yes --skip-install)",
+      "Bash(rm *)",
+      "Bash(npm install *)",
+      "Bash(npx prisma *)",
+      "Bash(npx ts-node *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(Get-ChildItem *)",
+      "PowerShell(ls -Path \"C:\\\\Users\\\\lucas.g\\\\projetos\\\\prensa-stroke\" | Where-Object { $_.Name -match \"\\(\\\\.ts|next\\\\.config|\\\\.env|prisma\\)\" })",
+      "Bash(pnpm prisma *)",
+      "Bash(pnpm build *)"
+    ]
+  }
+}

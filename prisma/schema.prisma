@@ -1,0 +1,78 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Tool {
+  id                String   @id @default(cuid())
+  code              String   @unique
+  description       String?
+  press             String
+  line              String?
+  shotsPerStroke    Int
+  currentStrokes    Int      @default(0)
+  preventiveLimit   Int      @default(50000)
+  warningLimit      Int      @default(45000)
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  bomItems           BomItem[]
+  maintenanceRecords MaintenanceRecord[]
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  modelo      String?
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  bomItems  BomItem[]
+  forecasts ProductionForecast[]
+}
+
+model BomItem {
+  id           String   @id @default(cuid())
+  productId    String
+  toolId       String
+  quantityUsed Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tool    Tool    @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, toolId])
+}
+
+model ProductionForecast {
+  id              String   @id @default(cuid())
+  productId       String
+  referenceMonth  DateTime
+  plannedQuantity Int
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model MaintenanceRecord {
+  id                   String   @id @default(cuid())
+  toolId               String
+  maintenanceDate      DateTime
+  strokesAtMaintenance Int
+  maintenanceType      String
+  responsible          String?
+  notes                String?
+  resetCounter         Boolean  @default(true)
+  createdAt            DateTime @default(now())
+
+  tool Tool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+}
