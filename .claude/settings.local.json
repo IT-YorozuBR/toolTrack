@@ -12,7 +12,9 @@
       "Bash(Get-ChildItem *)",
       "PowerShell(ls -Path \"C:\\\\Users\\\\lucas.g\\\\projetos\\\\prensa-stroke\" | Where-Object { $_.Name -match \"\\(\\\\.ts|next\\\\.config|\\\\.env|prisma\\)\" })",
       "Bash(pnpm prisma *)",
-      "Bash(pnpm build *)"
+      "Bash(pnpm build *)",
+      "Bash(findstr prisma *)",
+      "Bash(node *)"
     ]
   }
 }
