@@ -14,6 +14,13 @@ export type WindowMonth = {
   strokes: number;
 };
 
+export type ProductContribution = {
+  productId: string;
+  productCode: string;
+  strokesByMonth: Record<string, number>;
+  totalStrokes: number;
+};
+
 export type ToolProjection = {
   toolId: string;
   code: string;
@@ -29,12 +36,15 @@ export type ToolProjection = {
   status: MaintenanceStatus;
   reachesLimitInMonth?: string;
   window: WindowMonth[];           // N-1, N, N+1, N+2 individualmente
+  productBreakdown: ProductContribution[];
   errors: string[];
 };
 
 type BomItemWithProduct = {
   quantityUsed: number;
   product: {
+    id: string;
+    code: string;
     forecasts: {
       referenceMonth: Date;
       plannedQuantity: number;
@@ -228,6 +238,26 @@ export function getToolProjection(tool: ToolWithRelations): ToolProjection {
 
   const reachesLimitInMonth = getMonthWhenReachesLimit(tool);
 
+  const productBreakdown: ProductContribution[] = [];
+  if (tool.shotsPerStroke > 0 && isFinite(tool.shotsPerStroke)) {
+    const byProduct = new Map<string, ProductContribution>();
+    for (const bomItem of tool.bomItems) {
+      const { id: productId, code: productCode } = bomItem.product;
+      if (!byProduct.has(productId)) {
+        byProduct.set(productId, { productId, productCode, strokesByMonth: {}, totalStrokes: 0 });
+      }
+      const entry = byProduct.get(productId)!;
+      for (const forecast of bomItem.product.forecasts) {
+        const key = toMonthKey(new Date(forecast.referenceMonth));
+        const strokes = (forecast.plannedQuantity * bomItem.quantityUsed) / tool.shotsPerStroke;
+        if (!isFinite(strokes)) continue;
+        entry.strokesByMonth[key] = (entry.strokesByMonth[key] ?? 0) + strokes;
+        entry.totalStrokes += strokes;
+      }
+    }
+    productBreakdown.push(...byProduct.values());
+  }
+
   return {
     toolId: tool.id,
     code: tool.code,
@@ -243,6 +273,7 @@ export function getToolProjection(tool: ToolWithRelations): ToolProjection {
     status,
     reachesLimitInMonth,
     window,
+    productBreakdown,
     errors,
   };
 }
