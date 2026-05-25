@@ -1,13 +1,52 @@
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { SearchInput } from "@/components/ui/SearchInput";
+import { Pagination } from "@/components/ui/Pagination";
 import Link from "next/link";
 import { ProductActions } from "./ProductActions";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProdutosPage() {
-  const products = await prisma.product.findMany({ orderBy: { code: "asc" } });
+const PAGE_SIZE = 25;
+
+export default async function ProdutosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; search?: string }>;
+}) {
+  const { page, search } = await searchParams;
+  const currentPage = Math.max(1, parseInt(page ?? "1"));
+  const searchTerm = search?.trim() ?? "";
+
+  const where = searchTerm
+    ? {
+        OR: [
+          { code: { contains: searchTerm, mode: "insensitive" as const } },
+          { modelo: { contains: searchTerm, mode: "insensitive" as const } },
+          { description: { contains: searchTerm, mode: "insensitive" as const } },
+        ],
+      }
+    : {};
+
+  const [products, total] = await Promise.all([
+    prisma.product.findMany({
+      where,
+      orderBy: { code: "asc" },
+      skip: (currentPage - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.product.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+
+  function buildPageUrl(p: number) {
+    const params = new URLSearchParams();
+    if (searchTerm) params.set("search", searchTerm);
+    params.set("page", String(p));
+    return `/produtos?${params.toString()}`;
+  }
 
   return (
     <div>
@@ -21,11 +60,19 @@ export default async function ProdutosPage() {
         }
       />
 
+      <SearchInput
+        basePath="/produtos"
+        initialValue={searchTerm}
+        placeholder="Buscar por código, modelo ou descrição…"
+        total={total}
+        label={total === 1 ? "produto" : "produtos"}
+      />
+
       {products.length === 0 ? (
         <EmptyState
-          title="Nenhum produto cadastrado"
-          description="Cadastre produtos para depois associar ferramentas no BOM."
-          action={<Link href="/produtos/novo" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">Cadastrar Produto</Link>}
+          title="Nenhum produto encontrado"
+          description={searchTerm ? `Nenhum resultado para "${searchTerm}".` : "Cadastre produtos para depois associar ferramentas no BOM."}
+          action={!searchTerm ? <Link href="/produtos/novo" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">Cadastrar Produto</Link> : undefined}
         />
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -57,6 +104,7 @@ export default async function ProdutosPage() {
               ))}
             </tbody>
           </table>
+          <Pagination currentPage={currentPage} totalPages={totalPages} buildPageUrl={buildPageUrl} />
         </div>
       )}
     </div>

@@ -1,60 +1,144 @@
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { VolumeActions } from "./VolumeActions";
-import { VolumeForm } from "./VolumeForm";
-import { formatMonth } from "@/lib/utils";
+import { SearchInput } from "@/components/ui/SearchInput";
+import { Pagination } from "@/components/ui/Pagination";
+import { getWindowDates } from "@/lib/calculations/strokes";
+import { VolumeGrid, type WindowCol, type VolumeRow } from "./VolumeGrid";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-export default async function VolumesPage() {
-  const [forecasts, products] = await Promise.all([
-    prisma.productionForecast.findMany({ include: { product: true }, orderBy: [{ referenceMonth: "desc" }, { product: { code: "asc" } }] }),
-    prisma.product.findMany({ where: { active: true }, orderBy: { code: "asc" } }),
+const PAGE_SIZE = 30;
+
+export default async function VolumesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; search?: string }>;
+}) {
+  const { page, search } = await searchParams;
+  const currentPage = Math.max(1, parseInt(page ?? "1"));
+  const searchTerm = search?.trim() ?? "";
+
+  const windowDates = getWindowDates();
+
+  const cols: WindowCol[] = windowDates.map(({ offset, key, label, date }) => ({
+    key,
+    label,
+    offset,
+    date: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-01`,
+  }));
+
+
+
+  const where = searchTerm
+    ? {
+        OR: [
+          { code: { contains: searchTerm, mode: "insensitive" as const } },
+          { modelo: { contains: searchTerm, mode: "insensitive" as const } },
+        ],
+      }
+    : {};
+
+  const [products, total] = await Promise.all([
+    prisma.product.findMany({
+      where: { active: true, ...where },
+      orderBy: { code: "asc" },
+      skip: (currentPage - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.product.count({ where: { active: true, ...where } }),
   ]);
+
+  const productIds = products.map((p) => p.id);
+  const windowStart = windowDates[0].date;
+  const windowEnd = new Date(
+    windowDates[3].date.getFullYear(),
+    windowDates[3].date.getMonth() + 1,
+    1
+  );
+
+  const forecasts = await prisma.productionForecast.findMany({
+    where: {
+      productId: { in: productIds },
+      referenceMonth: { gte: windowStart, lt: windowEnd },
+    },
+  });
+
+  // Build forecast lookup: productId_monthKey → cell
+  const forecastMap = new Map<string, { id: string; plannedQuantity: number }>();
+  for (const f of forecasts) {
+    const key = `${f.productId}_${f.referenceMonth.getFullYear()}-${String(f.referenceMonth.getMonth() + 1).padStart(2, "0")}`;
+    forecastMap.set(key, { id: f.id, plannedQuantity: f.plannedQuantity });
+  }
+
+  const rows: VolumeRow[] = products.map((p) => ({
+    productId: p.id,
+    code: p.code,
+    modelo: p.modelo,
+    cells: Object.fromEntries(
+      cols.map((col) => {
+        const cell = forecastMap.get(`${p.id}_${col.key}`) ?? { id: null, plannedQuantity: null };
+        return [col.key, cell];
+      })
+    ),
+  }));
+
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+
+  function buildPageUrl(p: number) {
+    const params = new URLSearchParams();
+    if (searchTerm) params.set("search", searchTerm);
+    params.set("page", String(p));
+    return `/volumes?${params.toString()}`;
+  }
 
   return (
     <div>
-      <PageHeader title="Volumes Previstos" description="Previsão de produção por produto e mês" />
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          {forecasts.length === 0 ? (
-            <EmptyState title="Nenhum volume previsto cadastrado" description="Lance os volumes mensais para calcular as batidas previstas nos ferramentais." />
-          ) : (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Produto</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mês de Referência</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Volume Previsto</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {forecasts.map((f) => (
-                    <tr key={f.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <p className="font-medium text-gray-900">{f.product.code}</p>
-                        {f.product.description && <p className="text-xs text-gray-500">{f.product.description}</p>}
-                      </td>
-                      <td className="px-6 py-4 text-gray-700">{formatMonth(f.referenceMonth)}</td>
-                      <td className="px-6 py-4 text-right tabular-nums font-medium">{f.plannedQuantity.toLocaleString("pt-BR")}</td>
-                      <td className="px-6 py-4"><VolumeActions forecast={f} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-        <div>
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-4">Lançar Volume Previsto</h2>
-            <VolumeForm products={products} />
-          </div>
-        </div>
+      <PageHeader
+        title="Volumes Previstos"
+        description="Previsão de produção por produto na janela de planejamento"
+        action={
+          <Link href="/produtos/novo" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+            + Novo Produto
+          </Link>
+        }
+      />
+
+      {/* Legenda da janela */}
+      <div className="flex gap-2 mb-5 flex-wrap">
+        {cols.map((col) => (
+          <span
+            key={col.key}
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border
+              ${col.offset === 0 ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-white text-gray-600 border-gray-200"}`}
+          >
+            <span className="font-semibold">{["N-1", "N", "N+1", "N+2"][col.offset]}</span>
+            {col.label}
+            {col.offset === 0 && <span className="text-blue-500">(atual)</span>}
+          </span>
+        ))}
       </div>
+
+      <SearchInput
+        basePath="/volumes"
+        initialValue={searchTerm}
+        placeholder="Buscar por código ou modelo…"
+        total={total}
+        label={total === 1 ? "produto" : "produtos"}
+      />
+
+      {products.length === 0 ? (
+        <EmptyState
+          title="Nenhum produto encontrado"
+          description={searchTerm ? `Nenhum resultado para "${searchTerm}".` : "Cadastre produtos para lançar volumes."}
+        />
+      ) : (
+        <div className="space-y-4">
+          <VolumeGrid rows={rows} cols={cols} />
+          <Pagination currentPage={currentPage} totalPages={totalPages} buildPageUrl={buildPageUrl} />
+        </div>
+      )}
     </div>
   );
 }

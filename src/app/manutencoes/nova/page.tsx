@@ -8,11 +8,14 @@ export default async function NovaManutencaoPage({
 }: {
   searchParams: Promise<{ toolId?: string }>;
 }) {
-  const params = await searchParams;
-  const tools = await prisma.tool.findMany({
-    where: { active: true },
-    orderBy: { code: "asc" },
-  });
+  const { toolId } = await searchParams;
+
+  const defaultTool = toolId
+    ? await prisma.tool.findUnique({
+        where: { id: toolId },
+        select: { id: true, code: true, description: true, currentStrokes: true },
+      })
+    : null;
 
   return (
     <div>
@@ -29,7 +32,7 @@ export default async function NovaManutencaoPage({
         }
       />
       <div className="max-w-2xl">
-        <MaintenanceForm tools={tools} defaultToolId={params.toolId} />
+        <MaintenanceForm defaultTool={defaultTool} />
       </div>
     </div>
   );

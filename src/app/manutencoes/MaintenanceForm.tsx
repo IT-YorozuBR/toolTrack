@@ -3,28 +3,35 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createMaintenanceRecord } from "@/lib/actions/maintenance";
 import { SubmitButton } from "@/components/ui/SubmitButton";
-import type { Tool } from "@prisma/client";
+import { ToolCombobox } from "./ToolCombobox";
 
 const MAINTENANCE_TYPES = ["Preventiva", "Corretiva", "Inspeção", "Ajuste"];
 
-export function MaintenanceForm({
-  tools,
-  defaultToolId,
-}: {
-  tools: Tool[];
-  defaultToolId?: string;
-}) {
+type DefaultTool = {
+  id: string;
+  code: string;
+  description: string | null;
+  currentStrokes: number;
+};
+
+export function MaintenanceForm({ defaultTool }: { defaultTool?: DefaultTool | null }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [resetCounter, setResetCounter] = useState(true);
+  const [selectedTool, setSelectedTool] = useState<DefaultTool | null>(defaultTool ?? null);
+  const [strokes, setStrokes] = useState<string>(String(defaultTool?.currentStrokes ?? ""));
 
-  const selectedTool = tools.find((t) => t.id === defaultToolId);
+  function handleToolSelect(tool: DefaultTool | null) {
+    setSelectedTool(tool);
+    setStrokes(tool ? String(tool.currentStrokes) : "");
+  }
 
   async function handleSubmit(formData: FormData) {
     setError(null);
+    if (!selectedTool) { setError("Selecione um ferramental."); return; }
     const dateStr = formData.get("maintenanceDate") as string;
     const result = await createMaintenanceRecord({
-      toolId: formData.get("toolId") as string,
+      toolId: selectedTool.id,
       maintenanceDate: new Date(dateStr + "T12:00:00"),
       strokesAtMaintenance: parseInt(formData.get("strokesAtMaintenance") as string),
       maintenanceType: formData.get("maintenanceType") as string,
@@ -56,20 +63,7 @@ export function MaintenanceForm({
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Ferramental *</label>
-        <select
-          name="toolId"
-          defaultValue={defaultToolId ?? ""}
-          required
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Selecione...</option>
-          {tools.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.code}
-              {t.description ? ` — ${t.description}` : ""}
-            </option>
-          ))}
-        </select>
+        <ToolCombobox defaultTool={defaultTool} onSelect={handleToolSelect} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -93,7 +87,8 @@ export function MaintenanceForm({
             name="strokesAtMaintenance"
             type="number"
             min="0"
-            defaultValue={selectedTool?.currentStrokes ?? 0}
+            value={strokes}
+            onChange={(e) => setStrokes(e.target.value)}
             required
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
@@ -147,10 +142,7 @@ export function MaintenanceForm({
           className="h-4 w-4 text-orange-600 rounded border-gray-300"
         />
         <div>
-          <label
-            htmlFor="resetCounter"
-            className="text-sm font-medium text-gray-900 cursor-pointer"
-          >
+          <label htmlFor="resetCounter" className="text-sm font-medium text-gray-900 cursor-pointer">
             Zerar contador após registrar manutenção
           </label>
           <p className="text-xs text-gray-500 mt-0.5">

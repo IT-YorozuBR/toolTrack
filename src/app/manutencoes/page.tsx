@@ -1,16 +1,34 @@
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { SearchInput } from "@/components/ui/SearchInput";
 import { formatNumber } from "@/lib/utils";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-export default async function ManutencoesPage() {
-  const records = await prisma.maintenanceRecord.findMany({
-    include: { tool: true },
-    orderBy: { maintenanceDate: "desc" },
-  });
+export default async function ManutencoesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ search?: string }>;
+}) {
+  const { search } = await searchParams;
+  const searchTerm = search?.trim() ?? "";
+
+  const [records, total] = await Promise.all([
+    prisma.maintenanceRecord.findMany({
+      where: searchTerm
+        ? { tool: { code: { contains: searchTerm, mode: "insensitive" } } }
+        : undefined,
+      include: { tool: true },
+      orderBy: { maintenanceDate: "desc" },
+    }),
+    prisma.maintenanceRecord.count({
+      where: searchTerm
+        ? { tool: { code: { contains: searchTerm, mode: "insensitive" } } }
+        : undefined,
+    }),
+  ]);
 
   return (
     <div>
@@ -27,17 +45,27 @@ export default async function ManutencoesPage() {
         }
       />
 
+      <SearchInput
+        basePath="/manutencoes"
+        initialValue={searchTerm}
+        placeholder="Buscar por código do ferramental…"
+        total={total}
+        label={total === 1 ? "registro" : "registros"}
+      />
+
       {records.length === 0 ? (
         <EmptyState
-          title="Nenhuma manutenção registrada"
-          description="Registre manutenções para manter o histórico do ferramental."
+          title={searchTerm ? "Nenhuma manutenção encontrada" : "Nenhuma manutenção registrada"}
+          description={searchTerm ? `Nenhum resultado para "${searchTerm}".` : "Registre manutenções para manter o histórico do ferramental."}
           action={
-            <Link
-              href="/manutencoes/nova"
-              className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700"
-            >
-              Registrar Manutenção
-            </Link>
+            !searchTerm ? (
+              <Link
+                href="/manutencoes/nova"
+                className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700"
+              >
+                Registrar Manutenção
+              </Link>
+            ) : undefined
           }
         />
       ) : (

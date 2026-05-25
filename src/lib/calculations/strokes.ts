@@ -7,6 +7,13 @@ export type MaintenanceStatus =
   | "VENCIDO"
   | "ERRO_CADASTRO";
 
+export type WindowMonth = {
+  key: string;       // "YYYY-MM"
+  label: string;     // "Mai/2026"
+  offset: number;    // -1 | 0 | 1 | 2
+  strokes: number;
+};
+
 export type ToolProjection = {
   toolId: string;
   code: string;
@@ -14,13 +21,14 @@ export type ToolProjection = {
   press: string;
   line?: string | null;
   currentStrokes: number;
-  forecastedStrokes: number;
+  forecastedStrokes: number;       // soma dos 4 meses da janela
   totalProjectedStrokes: number;
   remainingStrokes: number;
   preventiveLimit: number;
   warningLimit: number;
   status: MaintenanceStatus;
   reachesLimitInMonth?: string;
+  window: WindowMonth[];           // N-1, N, N+1, N+2 individualmente
   errors: string[];
 };
 
@@ -50,25 +58,13 @@ type ToolWithRelations = {
 // ─── Portuguese month names ───────────────────────────────────────────────────
 
 const PT_MONTHS = [
-  "Janeiro",
-  "Fevereiro",
-  "Março",
-  "Abril",
-  "Maio",
-  "Junho",
-  "Julho",
-  "Agosto",
-  "Setembro",
-  "Outubro",
-  "Novembro",
-  "Dezembro",
+  "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+  "Jul", "Ago", "Set", "Out", "Nov", "Dez",
 ] as const;
 
 function formatMonthPt(date: Date): string {
   return `${PT_MONTHS[date.getMonth()]}/${date.getFullYear()}`;
 }
-
-// ─── Helper: normalise a Date to the first day of its month (UTC midnight) ────
 
 function toMonthKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -78,58 +74,81 @@ function isSameMonth(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
 }
 
+// ─── Rolling window N-1, N, N+1, N+2 ─────────────────────────────────────────
+
+export function getWindowDates(): { offset: number; date: Date; key: string; label: string; planningLabel: string }[] {
+  const now = new Date();
+  return [0, 1, 2, 3].map((offset) => {
+    const date = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+    // offset 0 = mês atual = N-1 na nomenclatura de planejamento
+    const label = ["N-1", "N", "N+1", "N+2"][offset];
+    return { offset, date, key: toMonthKey(date), planningLabel: label, label: formatMonthPt(date) };
+  });
+}
+
+// ─── calculateStrokesForMonth ─────────────────────────────────────────────────
+
+function calculateStrokesForMonth(
+  tool: ToolWithRelations,
+  monthKey: string,
+): number {
+  if (!tool.shotsPerStroke || tool.shotsPerStroke <= 0 || !isFinite(tool.shotsPerStroke)) {
+    return 0;
+  }
+
+  let total = 0;
+  for (const bomItem of tool.bomItems) {
+    for (const forecast of bomItem.product.forecasts) {
+      if (toMonthKey(new Date(forecast.referenceMonth)) !== monthKey) continue;
+      const strokes = (forecast.plannedQuantity * bomItem.quantityUsed) / tool.shotsPerStroke;
+      if (isFinite(strokes)) total += strokes;
+    }
+  }
+  return total;
+}
+
 // ─── calculateForecastedStrokes ───────────────────────────────────────────────
 
 /**
- * Sum of expected strokes from all BOM forecasts.
- * If referenceMonth is provided, only forecasts for that exact month are used.
- * Returns 0 when shotsPerStroke is invalid to avoid division-by-zero.
+ * Soma de batidas previstas dentro da janela N-1, N, N+1, N+2.
+ * Se referenceMonth for passado, usa apenas aquele mês (para chamadas pontuais).
  */
 export function calculateForecastedStrokes(
   tool: ToolWithRelations,
   referenceMonth?: Date,
 ): number {
-  if (
-    !tool.shotsPerStroke ||
-    tool.shotsPerStroke <= 0 ||
-    !isFinite(tool.shotsPerStroke)
-  ) {
+  if (!tool.shotsPerStroke || tool.shotsPerStroke <= 0 || !isFinite(tool.shotsPerStroke)) {
     return 0;
   }
 
-  let total = 0;
-
-  for (const bomItem of tool.bomItems) {
-    const forecasts = referenceMonth
-      ? bomItem.product.forecasts.filter((f) =>
-          isSameMonth(new Date(f.referenceMonth), referenceMonth),
-        )
-      : bomItem.product.forecasts;
-
-    for (const forecast of forecasts) {
-      const strokes =
-        (forecast.plannedQuantity * bomItem.quantityUsed) / tool.shotsPerStroke;
-      if (isFinite(strokes)) {
-        total += strokes;
+  if (referenceMonth) {
+    // chamada pontual — mantém compatibilidade
+    let total = 0;
+    for (const bomItem of tool.bomItems) {
+      for (const forecast of bomItem.product.forecasts) {
+        if (!isSameMonth(new Date(forecast.referenceMonth), referenceMonth)) continue;
+        const strokes = (forecast.plannedQuantity * bomItem.quantityUsed) / tool.shotsPerStroke;
+        if (isFinite(strokes)) total += strokes;
       }
     }
+    return total;
   }
 
+  // janela rolante N-1..N+2
+  const windowKeys = new Set(getWindowDates().map((w) => w.key));
+  let total = 0;
+  for (const bomItem of tool.bomItems) {
+    for (const forecast of bomItem.product.forecasts) {
+      if (!windowKeys.has(toMonthKey(new Date(forecast.referenceMonth)))) continue;
+      const strokes = (forecast.plannedQuantity * bomItem.quantityUsed) / tool.shotsPerStroke;
+      if (isFinite(strokes)) total += strokes;
+    }
+  }
   return total;
 }
 
 // ─── getMaintenanceStatus ─────────────────────────────────────────────────────
 
-/**
- * Derives the maintenance status based on projected total strokes.
- *
- * Status ladder (highest priority first):
- *   ERRO_CADASTRO         — invalid shotsPerStroke
- *   VENCIDO               — totalProjected >= preventiveLimit
- *   PROGRAMAR_PREVENTIVA  — totalProjected >= warningLimit
- *   ATENCAO               — totalProjected >= warningLimit - 5 000
- *   OK                    — otherwise
- */
 export function getMaintenanceStatus(
   currentStrokes: number,
   forecastedStrokes: number,
@@ -152,53 +171,22 @@ export function getMaintenanceStatus(
 // ─── getMonthWhenReachesLimit ─────────────────────────────────────────────────
 
 /**
- * Walks forward through forecast months (up to 24) and returns the first month
- * label (e.g. "Julho/2026") where cumulative strokes would reach preventiveLimit.
- * Returns undefined if the limit is never reached within the forecast horizon.
+ * Caminha pelos meses de N em diante (até 24) e retorna o primeiro em que
+ * o acumulado cruzaria o preventiveLimit.
+ * Usa apenas meses futuros (offset >= 0) pois N-1 já está no passado.
  */
-export function getMonthWhenReachesLimit(
-  tool: ToolWithRelations,
-): string | undefined {
-  if (
-    !tool.shotsPerStroke ||
-    tool.shotsPerStroke <= 0 ||
-    !isFinite(tool.shotsPerStroke)
-  ) {
+export function getMonthWhenReachesLimit(tool: ToolWithRelations): string | undefined {
+  if (!tool.shotsPerStroke || tool.shotsPerStroke <= 0 || !isFinite(tool.shotsPerStroke)) {
     return undefined;
   }
 
-  // Build a map: monthKey -> total strokes forecasted for that month
-  const strokesByMonth = new Map<string, { date: Date; strokes: number }>();
-
-  for (const bomItem of tool.bomItems) {
-    for (const forecast of bomItem.product.forecasts) {
-      const refDate = new Date(forecast.referenceMonth);
-      const key = toMonthKey(refDate);
-      const strokes =
-        (forecast.plannedQuantity * bomItem.quantityUsed) / tool.shotsPerStroke;
-
-      if (!isFinite(strokes)) continue;
-
-      const existing = strokesByMonth.get(key);
-      if (existing) {
-        existing.strokes += strokes;
-      } else {
-        strokesByMonth.set(key, { date: refDate, strokes });
-      }
-    }
-  }
-
-  // Sort months ascending
-  const sortedMonths = Array.from(strokesByMonth.values()).sort(
-    (a, b) => a.date.getTime() - b.date.getTime(),
-  );
-
-  // Limit to 24 months
-  const horizon = sortedMonths.slice(0, 24);
-
+  const now = new Date();
   let cumulative = tool.currentStrokes;
 
-  for (const { date, strokes } of horizon) {
+  for (let offset = 0; offset <= 23; offset++) {
+    const date = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+    const key = toMonthKey(date);
+    const strokes = calculateStrokesForMonth(tool, key);
     cumulative += strokes;
     if (cumulative >= tool.preventiveLimit) {
       return formatMonthPt(date);
@@ -210,22 +198,23 @@ export function getMonthWhenReachesLimit(
 
 // ─── getToolProjection ────────────────────────────────────────────────────────
 
-/**
- * Builds a complete ToolProjection for a single tool.
- * Never throws — errors are surfaced in the `errors` array.
- */
 export function getToolProjection(tool: ToolWithRelations): ToolProjection {
   const errors: string[] = [];
 
-  if (
-    !tool.shotsPerStroke ||
-    tool.shotsPerStroke <= 0 ||
-    !isFinite(tool.shotsPerStroke)
-  ) {
+  if (!tool.shotsPerStroke || tool.shotsPerStroke <= 0 || !isFinite(tool.shotsPerStroke)) {
     errors.push("Quantidade por shot inválida (deve ser maior que zero)");
   }
 
-  const forecastedStrokes = calculateForecastedStrokes(tool);
+  const windowDates = getWindowDates();
+
+  const window: WindowMonth[] = windowDates.map(({ offset, key, label }) => ({
+    key,
+    label,
+    offset,
+    strokes: calculateStrokesForMonth(tool, key),
+  }));
+
+  const forecastedStrokes = window.reduce((sum, m) => sum + m.strokes, 0);
   const totalProjectedStrokes = tool.currentStrokes + forecastedStrokes;
   const remainingStrokes = tool.preventiveLimit - totalProjectedStrokes;
 
@@ -253,17 +242,13 @@ export function getToolProjection(tool: ToolWithRelations): ToolProjection {
     warningLimit: tool.warningLimit,
     status,
     reachesLimitInMonth,
+    window,
     errors,
   };
 }
 
 // ─── getAllToolsProjection ────────────────────────────────────────────────────
 
-/**
- * Returns a ToolProjection for every tool in the array.
- */
-export function getAllToolsProjection(
-  tools: ToolWithRelations[],
-): ToolProjection[] {
+export function getAllToolsProjection(tools: ToolWithRelations[]): ToolProjection[] {
   return tools.map(getToolProjection);
 }

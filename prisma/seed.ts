@@ -1,6 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
+import * as XLSX from "xlsx";
+import path from "path";
 import "dotenv/config";
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
@@ -8,21 +10,35 @@ const adapter = new PrismaPg(pool);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const prisma = new PrismaClient({ adapter } as any);
 
+function parseToolCode(code: string): { press: string; line: string | null } {
+  const spaceIdx = code.indexOf(" ");
+  if (spaceIdx !== -1) {
+    return { press: code.slice(0, spaceIdx), line: code.slice(spaceIdx + 1) };
+  }
+  return { press: code, line: null };
+}
+
 async function main() {
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth();
+  const filePath = path.resolve(__dirname, "../dadosferramental.xlsx");
+  const wb = XLSX.readFile(filePath);
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json<(string | number | null)[]>(ws, { header: 1 });
 
-  // Reference months: current, +1, +2
-  const month0 = new Date(currentYear, currentMonth, 1);
-  const month1 = new Date(currentYear, currentMonth + 1, 1);
-  const month2 = new Date(currentYear, currentMonth + 2, 1);
+  const headerRow = rows[2] as (string | null)[];
+  const productCodes = headerRow.slice(3).filter((c): c is string => !!c);
+  const dataRows = rows.slice(3) as (string | number | null)[][];
 
-  // Three months ago for historical maintenance record
-  const threeMonthsAgo = new Date(currentYear, currentMonth - 3, 1);
+  const toolCodes = dataRows.map((r) => r[0]).filter((c): c is string => !!c);
+  const toolIndexMap = new Map<string, number>();
+  dataRows.forEach((r, i) => { if (r[0]) toolIndexMap.set(r[0] as string, i); });
+
+  // Map product code → column index in headerRow
+  const productColMap = new Map<string, number>();
+  headerRow.forEach((code, idx) => { if (code && idx >= 3) productColMap.set(code, idx); });
+
+  console.log(`Found ${toolCodes.length} tools, ${productCodes.length} products`);
 
   console.log("Cleaning up existing data...");
-
   await prisma.maintenanceRecord.deleteMany();
   await prisma.bomItem.deleteMany();
   await prisma.productionForecast.deleteMany();
@@ -30,235 +46,55 @@ async function main() {
   await prisma.product.deleteMany();
 
   console.log("Seeding tools...");
+  const toolMap = new Map<string, string>(); // code → id
 
-  const tool1 = await prisma.tool.upsert({
-    where: { code: "54401 V206AY" },
-    update: {},
-    create: {
-      code: "54401 V206AY",
-      press: "54401",
-      line: "V206AY",
-      shotsPerStroke: 4,
-      currentStrokes: 38000,
-    },
-  });
-
-  const tool2 = await prisma.tool.upsert({
-    where: { code: "55511 V629AY" },
-    update: {},
-    create: {
-      code: "55511 V629AY",
-      press: "55511",
-      line: "V629AY",
-      shotsPerStroke: 2,
-      currentStrokes: 22000,
-    },
-  });
-
-  const tool3 = await prisma.tool.upsert({
-    where: { code: "54401 W956AY" },
-    update: {},
-    create: {
-      code: "54401 W956AY",
-      press: "54401",
-      line: "W956AY",
-      shotsPerStroke: 1,
-      currentStrokes: 46500,
-    },
-  });
-
-  const tool4 = await prisma.tool.upsert({
-    where: { code: "54401 W955AY" },
-    update: {},
-    create: {
-      code: "54401 W955AY",
-      press: "54401",
-      line: "W955AY",
-      shotsPerStroke: 1,
-      currentStrokes: 49200,
-    },
-  });
-
-  const tool5 = await prisma.tool.upsert({
-    where: { code: "555B1 3425R" },
-    update: {},
-    create: {
-      code: "555B1 3425R",
-      press: "555B1",
-      line: "3425R",
-      shotsPerStroke: 6,
-      currentStrokes: 12000,
-    },
-  });
-
-  const tool6 = await prisma.tool.upsert({
-    where: { code: "6040 110 049" },
-    update: {},
-    create: {
-      code: "6040 110 049",
-      press: "6040",
-      line: "110 049",
-      shotsPerStroke: 3,
-      currentStrokes: 5000,
-    },
-  });
-
-  const tool7 = await prisma.tool.upsert({
-    where: { code: "6040 100 836" },
-    update: {},
-    create: {
-      code: "6040 100 836",
-      press: "6040",
-      line: "100 836",
-      shotsPerStroke: 2,
-      currentStrokes: 50100,
-      description: "Ferramental vencido - necessita manutenção",
-    },
-  });
+  for (const code of toolCodes) {
+    if (toolMap.has(code)) continue; // skip duplicates
+    const { press, line } = parseToolCode(code);
+    const tool = await prisma.tool.upsert({
+      where: { code },
+      update: {},
+      create: { code, press, line, shotsPerStroke: 1, currentStrokes: 0 },
+    });
+    toolMap.set(code, tool.id);
+  }
 
   console.log("Seeding products...");
+  const productMap = new Map<string, string>(); // code → id
 
-  const prod1 = await prisma.product.upsert({
-    where: { code: "PROD-001" },
-    update: {},
-    create: {
-      code: "PROD-001",
-      description: "Peça Estampada A",
-    },
-  });
-
-  const prod2 = await prisma.product.upsert({
-    where: { code: "PROD-002" },
-    update: {},
-    create: {
-      code: "PROD-002",
-      description: "Peça Estampada B",
-    },
-  });
-
-  const prod3 = await prisma.product.upsert({
-    where: { code: "PROD-003" },
-    update: {},
-    create: {
-      code: "PROD-003",
-      description: "Suporte Lateral C",
-    },
-  });
-
-  const prod4 = await prisma.product.upsert({
-    where: { code: "PROD-004" },
-    update: {},
-    create: {
-      code: "PROD-004",
-      description: "Tampa Inferior D",
-    },
-  });
+  for (const code of productCodes) {
+    const product = await prisma.product.upsert({
+      where: { code },
+      update: {},
+      create: { code },
+    });
+    productMap.set(code, product.id);
+  }
 
   console.log("Seeding BOM items...");
+  let bomCount = 0;
 
-  await prisma.bomItem.upsert({
-    where: { productId_toolId: { productId: prod1.id, toolId: tool1.id } },
-    update: {},
-    create: { productId: prod1.id, toolId: tool1.id, quantityUsed: 1 },
-  });
+  for (const [toolCode, rowIdx] of toolIndexMap) {
+    const toolId = toolMap.get(toolCode);
+    if (!toolId) continue;
+    const row = dataRows[rowIdx];
 
-  await prisma.bomItem.upsert({
-    where: { productId_toolId: { productId: prod1.id, toolId: tool3.id } },
-    update: {},
-    create: { productId: prod1.id, toolId: tool3.id, quantityUsed: 2 },
-  });
+    for (const [productCode, colIdx] of productColMap) {
+      const qty = row[colIdx];
+      if (qty && typeof qty === "number" && qty !== 0) {
+        const productId = productMap.get(productCode);
+        if (!productId) continue;
+        await prisma.bomItem.upsert({
+          where: { productId_toolId: { productId, toolId } },
+          update: { quantityUsed: qty },
+          create: { productId, toolId, quantityUsed: qty },
+        });
+        bomCount++;
+      }
+    }
+  }
 
-  await prisma.bomItem.upsert({
-    where: { productId_toolId: { productId: prod2.id, toolId: tool2.id } },
-    update: {},
-    create: { productId: prod2.id, toolId: tool2.id, quantityUsed: 1 },
-  });
-
-  await prisma.bomItem.upsert({
-    where: { productId_toolId: { productId: prod2.id, toolId: tool5.id } },
-    update: {},
-    create: { productId: prod2.id, toolId: tool5.id, quantityUsed: 3 },
-  });
-
-  await prisma.bomItem.upsert({
-    where: { productId_toolId: { productId: prod3.id, toolId: tool4.id } },
-    update: {},
-    create: { productId: prod3.id, toolId: tool4.id, quantityUsed: 1 },
-  });
-
-  await prisma.bomItem.upsert({
-    where: { productId_toolId: { productId: prod3.id, toolId: tool6.id } },
-    update: {},
-    create: { productId: prod3.id, toolId: tool6.id, quantityUsed: 2 },
-  });
-
-  await prisma.bomItem.upsert({
-    where: { productId_toolId: { productId: prod4.id, toolId: tool7.id } },
-    update: {},
-    create: { productId: prod4.id, toolId: tool7.id, quantityUsed: 1 },
-  });
-
-  console.log("Seeding production forecasts...");
-
-  // PROD-001
-  await prisma.productionForecast.create({
-    data: { productId: prod1.id, referenceMonth: month0, plannedQuantity: 5000 },
-  });
-  await prisma.productionForecast.create({
-    data: { productId: prod1.id, referenceMonth: month1, plannedQuantity: 6000 },
-  });
-  await prisma.productionForecast.create({
-    data: { productId: prod1.id, referenceMonth: month2, plannedQuantity: 5500 },
-  });
-
-  // PROD-002
-  await prisma.productionForecast.create({
-    data: { productId: prod2.id, referenceMonth: month0, plannedQuantity: 3000 },
-  });
-  await prisma.productionForecast.create({
-    data: { productId: prod2.id, referenceMonth: month1, plannedQuantity: 3500 },
-  });
-  await prisma.productionForecast.create({
-    data: { productId: prod2.id, referenceMonth: month2, plannedQuantity: 4000 },
-  });
-
-  // PROD-003
-  await prisma.productionForecast.create({
-    data: { productId: prod3.id, referenceMonth: month0, plannedQuantity: 2000 },
-  });
-  await prisma.productionForecast.create({
-    data: { productId: prod3.id, referenceMonth: month1, plannedQuantity: 2500 },
-  });
-  await prisma.productionForecast.create({
-    data: { productId: prod3.id, referenceMonth: month2, plannedQuantity: 2000 },
-  });
-
-  // PROD-004
-  await prisma.productionForecast.create({
-    data: { productId: prod4.id, referenceMonth: month0, plannedQuantity: 1500 },
-  });
-  await prisma.productionForecast.create({
-    data: { productId: prod4.id, referenceMonth: month1, plannedQuantity: 1800 },
-  });
-  await prisma.productionForecast.create({
-    data: { productId: prod4.id, referenceMonth: month2, plannedQuantity: 1600 },
-  });
-
-  console.log("Seeding maintenance records...");
-
-  await prisma.maintenanceRecord.create({
-    data: {
-      toolId: tool3.id,
-      maintenanceDate: threeMonthsAgo,
-      strokesAtMaintenance: 50000,
-      maintenanceType: "Preventiva",
-      responsible: "João Silva",
-      notes: "Manutenção preventiva realizada conforme programado",
-      resetCounter: true,
-    },
-  });
-
-  console.log("Seed completed successfully.");
+  console.log(`Seed completed: ${toolCodes.length} tools, ${productCodes.length} products, ${bomCount} BOM items.`);
 }
 
 main()

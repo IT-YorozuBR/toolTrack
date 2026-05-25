@@ -2,7 +2,12 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
 
-export function Controle50KFilters({ presses }: { presses: string[] }) {
+interface Props {
+  presses: string[];
+  availableMonths: string[];
+}
+
+export function Controle50KFilters({ presses, availableMonths }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -11,13 +16,14 @@ export function Controle50KFilters({ presses }: { presses: string[] }) {
       const params = new URLSearchParams(searchParams.toString());
       if (value) params.set(key, value);
       else params.delete(key);
+      params.delete("page");
       router.push(`/controle-50k?${params.toString()}`);
     },
     [router, searchParams]
   );
 
   return (
-    <div className="flex gap-3 flex-wrap">
+    <div className="flex gap-3 flex-wrap items-center">
       <select
         value={searchParams.get("status") ?? ""}
         onChange={(e) => updateFilter("status", e.target.value)}
@@ -38,11 +44,36 @@ export function Controle50KFilters({ presses }: { presses: string[] }) {
       >
         <option value="">Todas as prensas</option>
         {presses.map((p) => (
-          <option key={p} value={p}>
-            {p}
-          </option>
+          <option key={p} value={p}>{p}</option>
         ))}
       </select>
+
+      <select
+        value={searchParams.get("reachesMonth") ?? ""}
+        onChange={(e) => updateFilter("reachesMonth", e.target.value)}
+        className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+      >
+        <option value="">Manutenção em qualquer mês</option>
+        {availableMonths.map((m) => (
+          <option key={m} value={m}>Atinge limite em {m}</option>
+        ))}
+      </select>
+
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-gray-500 whitespace-nowrap">Batidas ≥</span>
+        <input
+          type="number"
+          min="0"
+          step="1000"
+          placeholder="Ex: 40000"
+          defaultValue={searchParams.get("minStrokes") ?? ""}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") updateFilter("minStrokes", (e.target as HTMLInputElement).value);
+          }}
+          onBlur={(e) => updateFilter("minStrokes", e.target.value)}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-32"
+        />
+      </div>
 
       <input
         type="text"

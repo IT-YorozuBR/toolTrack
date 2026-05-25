@@ -14,7 +14,9 @@
       "Bash(pnpm prisma *)",
       "Bash(pnpm build *)",
       "Bash(findstr prisma *)",
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(npm list *)",
+      "Bash(del src\\\\app\\\\volumes\\\\VolumeForm.tsx src\\\\app\\\\volumes\\\\VolumeActions.tsx)"
     ]
   }
 }

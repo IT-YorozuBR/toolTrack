@@ -2,58 +2,118 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { getAllToolsProjection } from "@/lib/calculations/strokes";
+import { Pagination } from "@/components/ui/Pagination";
+import { getAllToolsProjection, getWindowDates } from "@/lib/calculations/strokes";
 import { formatNumber } from "@/lib/utils";
 import { Controle50KFilters } from "./Controle50KFilters";
 import { RegisterMaintenanceButton } from "./RegisterMaintenanceButton";
 import Link from "next/link";
 
+const PAGE_SIZE = 50;
+
 export const dynamic = "force-dynamic";
+
+const PT_MONTH_IDX: Record<string, number> = {
+  Jan: 0, Fev: 1, Mar: 2, Abr: 3, Mai: 4, Jun: 5,
+  Jul: 6, Ago: 7, Set: 8, Out: 9, Nov: 10, Dez: 11,
+};
+
+function sortMonthLabels(labels: string[]): string[] {
+  return labels.sort((a, b) => {
+    const [ma, ya] = a.split("/");
+    const [mb, yb] = b.split("/");
+    const da = parseInt(ya) * 12 + (PT_MONTH_IDX[ma] ?? 0);
+    const db = parseInt(yb) * 12 + (PT_MONTH_IDX[mb] ?? 0);
+    return da - db;
+  });
+}
 
 export default async function Controle50KPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; press?: string; search?: string }>;
+  searchParams: Promise<{ status?: string; press?: string; search?: string; page?: string; minStrokes?: string; reachesMonth?: string }>;
 }) {
   const params = await searchParams;
+  const minStrokes = params.minStrokes ? parseInt(params.minStrokes) : undefined;
 
-  const tools = await prisma.tool.findMany({
-    where: {
-      active: true,
-      ...(params.press ? { press: params.press } : {}),
-      ...(params.search ? { code: { contains: params.search, mode: "insensitive" } } : {}),
-    },
-    include: {
-      bomItems: {
-        include: {
-          product: {
-            include: { forecasts: true },
-          },
+  const toolInclude = {
+    bomItems: {
+      include: {
+        product: {
+          include: { forecasts: true },
         },
       },
     },
-    orderBy: { code: "asc" },
-  });
+  } as const;
 
-  const allPresses = await prisma.tool.findMany({
-    select: { press: true },
-    distinct: ["press"],
-    orderBy: { press: "asc" },
-  });
+  const [tools, allActiveTools, allPresses] = await Promise.all([
+    prisma.tool.findMany({
+      where: {
+        active: true,
+        ...(params.press ? { press: params.press } : {}),
+        ...(params.search ? { code: { contains: params.search, mode: "insensitive" } } : {}),
+        ...(minStrokes ? { currentStrokes: { gte: minStrokes } } : {}),
+      },
+      include: toolInclude,
+      orderBy: { code: "asc" },
+    }),
+    prisma.tool.findMany({
+      where: { active: true },
+      include: toolInclude,
+      orderBy: { code: "asc" },
+    }),
+    prisma.tool.findMany({
+      select: { press: true },
+      distinct: ["press"],
+      orderBy: { press: "asc" },
+    }),
+  ]);
 
+  const windowDates = getWindowDates();
+
+  // Counts are always global — all active tools, no filters
+  const allProjections = getAllToolsProjection(allActiveTools);
+  const counts = {
+    total: allProjections.length,
+    ok: allProjections.filter((p) => p.status === "OK").length,
+    atencao: allProjections.filter((p) => p.status === "ATENCAO").length,
+    programar: allProjections.filter((p) => p.status === "PROGRAMAR_PREVENTIVA").length,
+    vencido: allProjections.filter((p) => p.status === "VENCIDO").length,
+  };
+
+  // Filtered projections for the table
   let projections = getAllToolsProjection(tools);
 
   if (params.status) {
     projections = projections.filter((p) => p.status === params.status);
   }
 
-  const counts = {
-    total: projections.length,
-    ok: projections.filter((p) => p.status === "OK").length,
-    atencao: projections.filter((p) => p.status === "ATENCAO").length,
-    programar: projections.filter((p) => p.status === "PROGRAMAR_PREVENTIVA").length,
-    vencido: projections.filter((p) => p.status === "VENCIDO").length,
-  };
+  // Available months derived from filtered projections (before reachesMonth filter)
+  const availableMonths = sortMonthLabels(
+    [...new Set(projections.map((p) => p.reachesLimitInMonth).filter((m): m is string => !!m))]
+  );
+
+  if (params.reachesMonth) {
+    projections = projections.filter((p) => p.reachesLimitInMonth === params.reachesMonth);
+  }
+
+  const currentPage = Math.max(1, parseInt(params.page ?? "1"));
+  const totalPages = Math.ceil(projections.length / PAGE_SIZE);
+  const paginatedProjections = projections.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  function buildPageUrl(p: number) {
+    const urlParams = new URLSearchParams();
+    if (params.status) urlParams.set("status", params.status);
+    if (params.press) urlParams.set("press", params.press);
+    if (params.search) urlParams.set("search", params.search);
+    if (params.minStrokes) urlParams.set("minStrokes", params.minStrokes);
+    if (params.reachesMonth) urlParams.set("reachesMonth", params.reachesMonth);
+    urlParams.set("page", String(p));
+    return `/controle-50k?${urlParams.toString()}`;
+  }
 
   return (
     <div>
@@ -88,7 +148,7 @@ export default async function Controle50KPage({
         ))}
       </div>
 
-      <Controle50KFilters presses={allPresses.map((p) => p.press)} />
+      <Controle50KFilters presses={allPresses.map((p) => p.press)} availableMonths={availableMonths} />
 
       {projections.length === 0 ? (
         <EmptyState
@@ -113,9 +173,12 @@ export default async function Controle50KPage({
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
                     Bat. Atuais
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                    Bat. Previstas
-                  </th>
+                  {windowDates.map((w) => (
+                    <th key={w.key} className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
+                      <div className={`${w.offset === 0 ? "text-blue-600" : ""}`}>{w.label}</div>
+                      <div className="text-[10px] font-normal normal-case text-gray-400">{w.planningLabel}</div>
+                    </th>
+                  ))}
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
                     Total Projetado
                   </th>
@@ -134,7 +197,7 @@ export default async function Controle50KPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {projections.map((p) => (
+                {paginatedProjections.map((p) => (
                   <tr
                     key={p.toolId}
                     className={`hover:bg-gray-50 ${
@@ -159,9 +222,11 @@ export default async function Controle50KPage({
                     <td className="px-4 py-3 text-right tabular-nums">
                       {formatNumber(p.currentStrokes)}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums">
-                      {formatNumber(Math.round(p.forecastedStrokes))}
-                    </td>
+                    {p.window.map((m) => (
+                      <td key={m.key} className={`px-4 py-3 text-right tabular-nums text-xs ${m.offset === 0 ? "text-blue-700 font-medium" : "text-gray-700"}`}>
+                        {m.strokes > 0 ? formatNumber(Math.round(m.strokes)) : "—"}
+                      </td>
+                    ))}
                     <td className="px-4 py-3 text-right tabular-nums font-semibold">
                       {formatNumber(Math.round(p.totalProjectedStrokes))}
                     </td>
@@ -192,6 +257,7 @@ export default async function Controle50KPage({
               </tbody>
             </table>
           </div>
+          <Pagination currentPage={currentPage} totalPages={totalPages} buildPageUrl={buildPageUrl} />
         </div>
       )}
     </div>
