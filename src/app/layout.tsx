@@ -8,6 +8,9 @@ const geist = Geist({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Controle 50K — Prensa RV",
   description: "Sistema de controle de batidas de prensa",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
