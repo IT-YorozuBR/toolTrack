@@ -58,6 +58,9 @@ export function ExpandableRow({
         </td>
         <td className="px-4 py-3 text-gray-600">{p.press}</td>
         <td className="px-4 py-3 text-gray-600">{p.line ?? "—"}</td>
+        <td className="px-4 py-3 text-right tabular-nums">
+          {formatNumber(p.estimatedStrokes)}
+        </td>
         {p.window.map((m: WindowMonth) => (
           <td
             key={m.key}
@@ -97,7 +100,7 @@ export function ExpandableRow({
 
       {expanded && (
         <tr>
-          <td colSpan={13} className="px-6 py-3 bg-gray-50 border-b border-gray-200">
+          <td colSpan={14} className="px-6 py-3 bg-gray-50 border-b border-gray-200">
             <ToolBreakdown
               breakdown={p.productBreakdown}
               windowDates={windowDates.map((w) => ({ key: w.key, label: w.label }))}

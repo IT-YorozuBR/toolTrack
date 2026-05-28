@@ -10,5 +10,7 @@ export default defineConfig({
   },
   datasource: {
     url: process.env["DATABASE_URL"],
-  },
+    // directUrl evita timeout de advisory lock no Neon (pooler não suporta)
+    ...(process.env["DIRECT_URL"] ? { directUrl: process.env["DIRECT_URL"] } : {}),
+  } as { url: string },
 });

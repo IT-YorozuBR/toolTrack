@@ -19,6 +19,11 @@ async function getDashboardData() {
           },
         },
       },
+      maintenanceRecords: {
+        where: { resetCounter: true },
+        orderBy: { maintenanceDate: "desc" as const },
+        take: 1,
+      },
     },
   });
 

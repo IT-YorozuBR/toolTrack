@@ -31,10 +31,11 @@ function sortMonthLabels(labels: string[]): string[] {
 export default async function Controle50KPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; press?: string; search?: string; page?: string; minStrokes?: string; reachesMonth?: string }>;
+  searchParams: Promise<{ status?: string; press?: string; search?: string; page?: string; minStrokes?: string; reachesMonth?: string; simulatedate?: string }>;
 }) {
   const params = await searchParams;
   const minStrokes = params.minStrokes ? parseInt(params.minStrokes) : undefined;
+  const referenceDate = params.simulatedate ? new Date(params.simulatedate) : undefined;
 
   const toolInclude = {
     bomItems: {
@@ -43,6 +44,11 @@ export default async function Controle50KPage({
           include: { forecasts: true },
         },
       },
+    },
+    maintenanceRecords: {
+      where: { resetCounter: true },
+      orderBy: { maintenanceDate: "desc" as const },
+      take: 1,
     },
   } as const;
 
@@ -69,10 +75,10 @@ export default async function Controle50KPage({
     }),
   ]);
 
-  const windowDates = getWindowDates();
+  const windowDates = getWindowDates(referenceDate);
 
   // Counts are always global — all active tools, no filters
-  const allProjections = getAllToolsProjection(allActiveTools);
+  const allProjections = getAllToolsProjection(allActiveTools, referenceDate);
   const counts = {
     total: allProjections.length,
     ok: allProjections.filter((p) => p.status === "OK").length,
@@ -82,7 +88,7 @@ export default async function Controle50KPage({
   };
 
   // Filtered projections for the table
-  let projections = getAllToolsProjection(tools);
+  let projections = getAllToolsProjection(tools, referenceDate);
 
   if (params.status) {
     projections = projections.filter((p) => p.status === params.status);
@@ -111,12 +117,19 @@ export default async function Controle50KPage({
     if (params.search) urlParams.set("search", params.search);
     if (params.minStrokes) urlParams.set("minStrokes", params.minStrokes);
     if (params.reachesMonth) urlParams.set("reachesMonth", params.reachesMonth);
+    if (params.simulatedate) urlParams.set("simulatedate", params.simulatedate);
     urlParams.set("page", String(p));
     return `/controle-50k?${urlParams.toString()}`;
   }
 
   return (
     <div>
+      {referenceDate && (
+        <div className="mb-4 px-4 py-2 bg-yellow-50 border border-yellow-300 rounded-lg text-sm text-yellow-800">
+          Simulando data: <strong>{referenceDate.toLocaleDateString("pt-BR")}</strong> —{" "}
+          <a href="/controle-50k" className="underline">voltar para hoje</a>
+        </div>
+      )}
       <PageHeader
         title="Controle 50K"
         description="Previsão de batidas e controle preventivo de ferramentais"
@@ -171,7 +184,7 @@ export default async function Controle50KPage({
                     Linha
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                    Bat. Atuais
+                    Bat. Estimadas
                   </th>
                   {windowDates.map((w) => (
                     <th key={w.key} className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
@@ -220,7 +233,7 @@ export default async function Controle50KPage({
                     <td className="px-4 py-3 text-gray-600">{p.press}</td>
                     <td className="px-4 py-3 text-gray-600">{p.line ?? "—"}</td>
                     <td className="px-4 py-3 text-right tabular-nums">
-                      {formatNumber(p.currentStrokes)}
+                      {formatNumber(p.estimatedStrokes)}
                     </td>
                     {p.window.map((m) => (
                       <td key={m.key} className={`px-4 py-3 text-right tabular-nums text-xs ${m.offset === 0 ? "text-blue-700 font-medium" : "text-gray-700"}`}>
