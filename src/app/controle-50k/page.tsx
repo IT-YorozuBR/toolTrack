@@ -220,6 +220,8 @@ export default async function Controle50KPage({
                         ? "bg-red-50"
                         : p.status === "PROGRAMAR_PREVENTIVA"
                         ? "bg-orange-50"
+                        : p.status === "ATENCAO"
+                        ? "bg-yellow-50"
                         : ""
                     }`}
                   >
