@@ -15,6 +15,11 @@ type WindowDate = {
   offset: number;
 };
 
+function formatDate(date: string | null): string {
+  if (!date) return "—";
+  return new Date(date).toLocaleDateString("pt-BR");
+}
+
 export function ExpandableRow({
   p,
   windowDates,
@@ -35,11 +40,11 @@ export function ExpandableRow({
     <>
       <tr className={`${rowBg} hover:bg-gray-50`}>
         {/* Ferramental — first cell has expand button */}
-        <td className="px-4 py-3">
+        <td className="px-3 py-2">
           <div className="flex items-start gap-2">
             <button
               onClick={() => setExpanded((v) => !v)}
-              className="mt-0.5 flex-shrink-0 w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-gray-700 hover:bg-gray-200 transition-colors text-xs"
+              className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded text-[10px] text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700"
               aria-label={expanded ? "Recolher breakdown" : "Expandir breakdown"}
               title={expanded ? "Recolher breakdown por produto" : "Expandir breakdown por produto"}
             >
@@ -48,34 +53,50 @@ export function ExpandableRow({
             <div>
               <p className="font-medium text-gray-900">{p.code}</p>
               {p.description && (
-                <p className="text-xs text-gray-500 mt-0.5">{p.description}</p>
+                <p className="mt-0.5 truncate text-[10px] text-gray-500" title={p.description}>
+                  {p.description}
+                </p>
               )}
               {p.errors.length > 0 && (
-                <p className="text-xs text-red-600 mt-0.5">⚠ {p.errors[0]}</p>
+                <p className="mt-0.5 truncate text-[10px] text-red-600">⚠ {p.errors[0]}</p>
               )}
             </div>
           </div>
         </td>
-        <td className="px-4 py-3 text-gray-600">{p.press}</td>
-        <td className="px-4 py-3 text-gray-600">{p.line ?? "—"}</td>
-        <td className="px-4 py-3 text-right tabular-nums">
-          {formatNumber(p.estimatedStrokes)}
+        <td className="px-3 py-2 text-[10px] text-gray-600">
+          {formatDate(p.lastMaintenanceDate)}
+        </td>
+        <td className="px-3 py-2 text-right tabular-nums">
+          <span
+            className={
+              p.hasMaintenanceInReferenceMonth
+                ? "inline-flex min-w-14 justify-end rounded bg-blue-50 px-1.5 py-0.5 font-semibold text-blue-800 ring-1 ring-blue-200"
+                : ""
+            }
+            title={
+              p.hasMaintenanceInReferenceMonth
+                ? "Ferramental com manutenção registrada no mês de referência"
+                : undefined
+            }
+          >
+            {formatNumber(p.estimatedStrokes)}
+          </span>
         </td>
         {p.window.map((m: WindowMonth) => (
           <td
             key={m.key}
-            className={`px-4 py-3 text-right tabular-nums text-xs ${
-              m.offset === 0 ? "text-blue-700 font-medium" : "text-gray-700"
+            className={`px-3 py-2 text-right tabular-nums ${
+              m.offset === 0 ? "font-medium text-blue-700" : "text-gray-700"
             }`}
           >
             {m.strokes > 0 ? formatNumber(Math.round(m.strokes)) : "—"}
           </td>
         ))}
-        <td className="px-4 py-3 text-right tabular-nums font-semibold">
+        <td className="px-3 py-2 text-right tabular-nums font-semibold">
           {formatNumber(Math.round(p.totalProjectedStrokes))}
         </td>
         <td
-          className={`px-4 py-3 text-right tabular-nums font-semibold ${
+          className={`px-3 py-2 text-right tabular-nums font-semibold ${
             p.remainingStrokes < 0
               ? "text-red-600"
               : p.remainingStrokes < 5000
@@ -85,13 +106,13 @@ export function ExpandableRow({
         >
           {formatNumber(Math.round(p.remainingStrokes))}
         </td>
-        <td className="px-4 py-3">
+        <td className="px-3 py-2">
           <StatusBadge status={p.status} />
         </td>
-        <td className="px-4 py-3 text-gray-600 text-xs">
+        <td className="px-3 py-2 text-[10px] text-gray-600">
           {p.reachesLimitInMonth ?? "—"}
         </td>
-        <td className="px-4 py-3">
+        <td className="px-3 py-2">
           {(p.status === "PROGRAMAR_PREVENTIVA" || p.status === "VENCIDO") && (
             <RegisterMaintenanceButton toolId={p.toolId} toolCode={p.code} />
           )}
@@ -100,7 +121,7 @@ export function ExpandableRow({
 
       {expanded && (
         <tr>
-          <td colSpan={14} className="px-6 py-3 bg-gray-50 border-b border-gray-200">
+          <td colSpan={11} className="px-6 py-3 bg-gray-50 border-b border-gray-200">
             <ToolBreakdown
               breakdown={p.productBreakdown}
               windowDates={windowDates.map((w) => ({ key: w.key, label: w.label }))}

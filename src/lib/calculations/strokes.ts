@@ -28,6 +28,8 @@ export type ToolProjection = {
   press: string;
   line?: string | null;
   currentStrokes: number;
+  lastMaintenanceDate: string | null;
+  hasMaintenanceInReferenceMonth: boolean;
   estimatedStrokes: number;        // calculado a partir da última manutenção + forecasts proporcionais
   forecastedStrokes: number;       // soma dos 4 meses da janela
   totalProjectedStrokes: number;
@@ -277,6 +279,9 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
   const lastReset = tool.maintenanceRecords
     .filter((m) => m.resetCounter)
     .sort((a, b) => b.maintenanceDate.getTime() - a.maintenanceDate.getTime())[0];
+  const hasMaintenanceInReferenceMonth = lastReset
+    ? isSameMonth(lastReset.maintenanceDate, today)
+    : false;
 
   let estimatedStrokes: number;
   if (lastReset) {
@@ -331,6 +336,8 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
     press: tool.press,
     line: tool.line,
     currentStrokes: tool.currentStrokes,
+    lastMaintenanceDate: lastReset?.maintenanceDate.toISOString() ?? null,
+    hasMaintenanceInReferenceMonth,
     estimatedStrokes,
     forecastedStrokes,
     totalProjectedStrokes,

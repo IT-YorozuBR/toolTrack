@@ -11,9 +11,9 @@ export function RegisterMaintenanceButton({
   return (
     <button
       onClick={() => router.push(`/manutencoes/nova?toolId=${toolId}`)}
-      className="px-3 py-1.5 text-xs bg-orange-600 text-white rounded-lg hover:bg-orange-700 whitespace-nowrap font-medium"
+      className="whitespace-nowrap rounded-md bg-orange-600 px-2 py-1 text-[10px] font-medium text-white hover:bg-orange-700"
     >
-      Registrar Manutenção
+      Registrar
     </button>
   );
 }

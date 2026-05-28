@@ -28,6 +28,11 @@ function sortMonthLabels(labels: string[]): string[] {
   });
 }
 
+function formatDate(date: string | null): string {
+  if (!date) return "—";
+  return new Date(date).toLocaleDateString("pt-BR");
+}
+
 export default async function Controle50KPage({
   searchParams,
 }: {
@@ -171,40 +176,37 @@ export default async function Controle50KPage({
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mt-4">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full table-fixed text-[11px] leading-tight">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="w-[18%] px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">
                     Ferramental
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Prensa
+                  <th className="w-[8.5%] px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">
+                    Últ. manut.
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Linha
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                    Bat. Estimadas
+                  <th className="w-[8.5%] px-3 py-2 text-right text-[10px] font-medium text-gray-500 uppercase">
+                    Estimadas
                   </th>
                   {windowDates.map((w) => (
-                    <th key={w.key} className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
+                    <th key={w.key} className="w-[6.25%] px-3 py-2 text-right text-[10px] font-medium text-gray-500 uppercase">
                       <div className={`${w.offset === 0 ? "text-blue-600" : ""}`}>{w.label}</div>
                       <div className="text-[10px] font-normal normal-case text-gray-400">{w.planningLabel}</div>
                     </th>
                   ))}
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                    Total Projetado
+                  <th className="w-[8%] px-3 py-2 text-right text-[10px] font-medium text-gray-500 uppercase">
+                    Projetado
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                    Saldo até 50k
+                  <th className="w-[8%] px-3 py-2 text-right text-[10px] font-medium text-gray-500 uppercase">
+                    Saldo 50k
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="w-[8%] px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Previsão de Atingir 50k
+                  <th className="w-[8%] px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">
+                    Atinge
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="w-[8%] px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">
                     Ação
                   </th>
                 </tr>
@@ -221,30 +223,46 @@ export default async function Controle50KPage({
                         : ""
                     }`}
                   >
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2">
                       <p className="font-medium text-gray-900">{p.code}</p>
                       {p.description && (
-                        <p className="text-xs text-gray-500 mt-0.5">{p.description}</p>
+                        <p className="mt-0.5 truncate text-[10px] text-gray-500" title={p.description}>
+                          {p.description}
+                        </p>
                       )}
                       {p.errors.length > 0 && (
-                        <p className="text-xs text-red-600 mt-0.5">⚠ {p.errors[0]}</p>
+                        <p className="mt-0.5 truncate text-[10px] text-red-600">⚠ {p.errors[0]}</p>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{p.press}</td>
-                    <td className="px-4 py-3 text-gray-600">{p.line ?? "—"}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">
-                      {formatNumber(p.estimatedStrokes)}
+                    <td className="px-3 py-2 text-[10px] text-gray-600">
+                      {formatDate(p.lastMaintenanceDate)}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      <span
+                        className={
+                          p.hasMaintenanceInReferenceMonth
+                            ? "inline-flex min-w-14 justify-end rounded bg-blue-50 px-1.5 py-0.5 font-semibold text-blue-800 ring-1 ring-blue-200"
+                            : ""
+                        }
+                        title={
+                          p.hasMaintenanceInReferenceMonth
+                            ? "Ferramental com manutenção registrada no mês de referência"
+                            : undefined
+                        }
+                      >
+                        {formatNumber(p.estimatedStrokes)}
+                      </span>
                     </td>
                     {p.window.map((m) => (
-                      <td key={m.key} className={`px-4 py-3 text-right tabular-nums text-xs ${m.offset === 0 ? "text-blue-700 font-medium" : "text-gray-700"}`}>
+                      <td key={m.key} className={`px-3 py-2 text-right tabular-nums ${m.offset === 0 ? "font-medium text-blue-700" : "text-gray-700"}`}>
                         {m.strokes > 0 ? formatNumber(Math.round(m.strokes)) : "—"}
                       </td>
                     ))}
-                    <td className="px-4 py-3 text-right tabular-nums font-semibold">
+                    <td className="px-3 py-2 text-right tabular-nums font-semibold">
                       {formatNumber(Math.round(p.totalProjectedStrokes))}
                     </td>
                     <td
-                      className={`px-4 py-3 text-right tabular-nums font-semibold ${
+                      className={`px-3 py-2 text-right tabular-nums font-semibold ${
                         p.remainingStrokes < 0
                           ? "text-red-600"
                           : p.remainingStrokes < 5000
@@ -254,13 +272,13 @@ export default async function Controle50KPage({
                     >
                       {formatNumber(Math.round(p.remainingStrokes))}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2">
                       <StatusBadge status={p.status} />
                     </td>
-                    <td className="px-4 py-3 text-gray-600 text-xs">
+                    <td className="px-3 py-2 text-[10px] text-gray-600">
                       {p.reachesLimitInMonth ?? "—"}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2">
                       {(p.status === "PROGRAMAR_PREVENTIVA" || p.status === "VENCIDO") && (
                         <RegisterMaintenanceButton toolId={p.toolId} toolCode={p.code} />
                       )}
