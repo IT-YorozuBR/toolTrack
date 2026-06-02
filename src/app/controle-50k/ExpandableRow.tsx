@@ -84,6 +84,22 @@ export function ExpandableRow({
             {formatNumber(p.estimatedStrokes)}
           </span>
         </td>
+        <td className="px-3 py-2 text-right tabular-nums">
+          <span
+            className={
+              p.hasMaintenanceInReferenceMonth
+                ? "inline-flex min-w-14 justify-end rounded bg-green-50 px-1.5 py-0.5 font-semibold text-green-800 ring-1 ring-green-200"
+                : "text-gray-700"
+            }
+            title={
+              p.hasMaintenanceInReferenceMonth
+                ? "Batidas previstas restantes no mês após a manutenção registrada"
+                : "Batidas previstas para o mês de referência"
+            }
+          >
+            {formatNumber(Math.round(p.currentMonthRemainingStrokes))}
+          </span>
+        </td>
         {p.window.map((m: WindowMonth) => (
           <td
             key={m.key}
@@ -123,7 +139,7 @@ export function ExpandableRow({
 
       {expanded && (
         <tr>
-          <td colSpan={11} className="px-6 py-3 bg-gray-50 border-b border-gray-200">
+          <td colSpan={12} className="px-6 py-3 bg-gray-50 border-b border-gray-200">
             <ToolBreakdown
               breakdown={p.productBreakdown}
               windowDates={windowDates.map((w) => ({ key: w.key, label: w.label }))}

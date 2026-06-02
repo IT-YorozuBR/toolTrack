@@ -8,21 +8,25 @@ interface Props {
   placeholder?: string;
   total: number;
   label: string;
+  extraParams?: Record<string, string>;
 }
 
-export function SearchInput({ basePath, initialValue, placeholder, total, label }: Props) {
+export function SearchInput({ basePath, initialValue, placeholder, total, label, extraParams }: Props) {
   const router = useRouter();
   const [value, setValue] = useState(initialValue);
 
+  const extraParamsStr = extraParams ? JSON.stringify(extraParams) : "";
+
   useEffect(() => {
     const t = setTimeout(() => {
-      const params = new URLSearchParams();
+      const extra = extraParamsStr ? (JSON.parse(extraParamsStr) as Record<string, string>) : {};
+      const params = new URLSearchParams(extra);
       if (value.trim()) params.set("search", value.trim());
       params.set("page", "1");
       router.push(`${basePath}?${params.toString()}`);
     }, 400);
     return () => clearTimeout(t);
-  }, [value, basePath, router]);
+  }, [value, basePath, router, extraParamsStr]);
 
   return (
     <div className="flex items-center gap-4 mb-4">

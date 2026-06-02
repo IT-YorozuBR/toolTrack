@@ -15,7 +15,16 @@ async function getDashboardData() {
       bomItems: {
         include: {
           product: {
-            include: { forecasts: true },
+            include: {
+              forecasts: true,
+              projectProducts: {
+                include: {
+                  project: {
+                    include: { forecasts: true },
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -23,6 +32,9 @@ async function getDashboardData() {
         where: { resetCounter: true },
         orderBy: { maintenanceDate: "desc" as const },
         take: 1,
+      },
+      monthlySnapshots: {
+        orderBy: { referenceMonth: "asc" as const },
       },
     },
   });
@@ -89,7 +101,7 @@ export default async function DashboardPage() {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ferramental</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Prensa</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Batidas Atuais</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acumulado ciclo</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total Projetado</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Saldo até 50k</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -101,7 +113,7 @@ export default async function DashboardPage() {
                   <tr key={p.toolId} className="hover:bg-gray-50">
                     <td className="px-6 py-4 font-medium text-gray-900">{p.code}</td>
                     <td className="px-6 py-4 text-gray-600">{p.press}</td>
-                    <td className="px-6 py-4 text-right tabular-nums">{formatNumber(p.currentStrokes)}</td>
+                    <td className="px-6 py-4 text-right tabular-nums">{formatNumber(p.estimatedStrokes)}</td>
                     <td className="px-6 py-4 text-right tabular-nums font-medium">{formatNumber(p.totalProjectedStrokes)}</td>
                     <td className={`px-6 py-4 text-right tabular-nums font-medium ${p.remainingStrokes < 0 ? "text-red-600" : "text-gray-900"}`}>
                       {formatNumber(p.remainingStrokes)}

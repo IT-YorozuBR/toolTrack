@@ -5,12 +5,15 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", emoji: "" },
+  { href: "/controle-50k", label: "Controle 50K", emoji: "", primary: true },
   { href: "/ferramentais", label: "Ferramentais", emoji: "" },
   { href: "/produtos", label: "Produtos", emoji: "" },
+  { href: "/projetos", label: "Projetos", emoji: "" },
   { href: "/bom", label: "BOM", emoji: "" },
   { href: "/volumes", label: "Volumes Previstos", emoji: "" },
-  { href: "/controle-50k", label: "Controle 50K", emoji: "", primary: true },
   { href: "/manutencoes", label: "Manutenções", emoji: "" },
+  { href: "/historico-demanda", label: "Histórico Demanda", emoji: "" },
+  { href: "/fechamento-mensal", label: "Fechamento Mensal", emoji: "" },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

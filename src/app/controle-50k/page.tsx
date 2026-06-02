@@ -4,6 +4,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Pagination } from "@/components/ui/Pagination";
 import { getAllToolsProjection, getWindowDates } from "@/lib/calculations/strokes";
+import { autoEnsureMonthlySnapshots } from "@/lib/actions/monthly-stroke-snapshots";
 import { formatNumber } from "@/lib/utils";
 import { Controle50KFilters } from "./Controle50KFilters";
 import { RegisterMaintenanceButton } from "./RegisterMaintenanceButton";
@@ -42,11 +43,22 @@ export default async function Controle50KPage({
   const minStrokes = params.minStrokes ? parseInt(params.minStrokes) : undefined;
   const referenceDate = params.simulatedate ? new Date(params.simulatedate) : undefined;
 
+  void autoEnsureMonthlySnapshots(referenceDate);
+
   const toolInclude = {
     bomItems: {
       include: {
         product: {
-          include: { forecasts: true },
+          include: {
+            forecasts: true,
+            projectProducts: {
+              include: {
+                project: {
+                  include: { forecasts: true },
+                },
+              },
+            },
+          },
         },
       },
     },
@@ -54,6 +66,9 @@ export default async function Controle50KPage({
       where: { resetCounter: true },
       orderBy: { maintenanceDate: "desc" as const },
       take: 1,
+    },
+    monthlySnapshots: {
+      orderBy: { referenceMonth: "asc" as const },
     },
   } as const;
 
@@ -188,6 +203,9 @@ export default async function Controle50KPage({
                   <th className="w-[8.5%] px-3 py-2 text-right text-[10px] font-medium text-gray-500 uppercase">
                     Estimadas
                   </th>
+                  <th className="w-[8%] px-3 py-2 text-right text-[10px] font-medium text-gray-500 uppercase">
+                    Restante mês
+                  </th>
                   {windowDates.map((w) => (
                     <th key={w.key} className="w-[6.25%] px-3 py-2 text-right text-[10px] font-medium text-gray-500 uppercase">
                       <div className={`${w.offset === 0 ? "text-blue-600" : ""}`}>{w.label}</div>
@@ -253,6 +271,22 @@ export default async function Controle50KPage({
                         }
                       >
                         {formatNumber(p.estimatedStrokes)}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      <span
+                        className={
+                          p.hasMaintenanceInReferenceMonth
+                            ? "inline-flex min-w-14 justify-end rounded bg-green-50 px-1.5 py-0.5 font-semibold text-green-800 ring-1 ring-green-200"
+                            : "text-gray-700"
+                        }
+                        title={
+                          p.hasMaintenanceInReferenceMonth
+                            ? "Batidas previstas restantes no mês após a manutenção registrada"
+                            : "Batidas previstas para o mês de referência"
+                        }
+                      >
+                        {formatNumber(Math.round(p.currentMonthRemainingStrokes))}
                       </span>
                     </td>
                     {p.window.map((m) => (

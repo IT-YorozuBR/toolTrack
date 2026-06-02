@@ -23,6 +23,45 @@ model Tool {
 
   bomItems           BomItem[]
   maintenanceRecords MaintenanceRecord[]
+  monthlySnapshots   ToolMonthlyStrokeSnapshot[]
+  strokeReadings     ToolStrokeReading[]
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  projectProducts ProjectProduct[]
+  forecasts       ProjectForecast[]
+}
+
+model ProjectProduct {
+  id        String  @id @default(cuid())
+  projectId String
+  productId String
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, productId])
+}
+
+model ProjectForecast {
+  id              String   @id @default(cuid())
+  projectId       String
+  referenceMonth  DateTime
+  plannedQuantity Int
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, referenceMonth])
 }
 
 model Product {
@@ -34,8 +73,9 @@ model Product {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  bomItems  BomItem[]
-  forecasts ProductionForecast[]
+  bomItems        BomItem[]
+  forecasts       ProductionForecast[]
+  projectProducts ProjectProduct[]
 }
 
 model BomItem {
@@ -77,4 +117,35 @@ model MaintenanceRecord {
   createdAt            DateTime @default(now())
 
   tool Tool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+}
+
+model ToolMonthlyStrokeSnapshot {
+  id             String   @id @default(cuid())
+  toolId         String
+  referenceMonth DateTime
+  strokes        Int
+  forecastStrokes Int?
+  actualStrokes  Int?
+  cycleStartedAt DateTime?
+  source         String   @default("forecast")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tool Tool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@unique([toolId, referenceMonth])
+  @@index([referenceMonth])
+}
+
+model ToolStrokeReading {
+  id           String   @id @default(cuid())
+  toolId       String
+  readingDate  DateTime
+  cycleStrokes Int
+  notes        String?
+  createdAt    DateTime @default(now())
+
+  tool Tool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@index([toolId, readingDate])
 }

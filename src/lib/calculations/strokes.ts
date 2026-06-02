@@ -1,5 +1,3 @@
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 export type MaintenanceStatus =
   | "OK"
   | "ATENCAO"
@@ -8,9 +6,9 @@ export type MaintenanceStatus =
   | "ERRO_CADASTRO";
 
 export type WindowMonth = {
-  key: string;       // "YYYY-MM"
-  label: string;     // "Mai/2026"
-  offset: number;    // -1 | 0 | 1 | 2
+  key: string;
+  label: string;
+  offset: number;
   strokes: number;
 };
 
@@ -30,15 +28,20 @@ export type ToolProjection = {
   currentStrokes: number;
   lastMaintenanceDate: string | null;
   hasMaintenanceInReferenceMonth: boolean;
-  estimatedStrokes: number;        // calculado a partir da última manutenção + forecasts proporcionais
-  forecastedStrokes: number;       // soma dos 4 meses da janela
+  strokesAtLastMaintenance: number | null;
+  estimatedStrokes: number;
+  forecastedStrokes: number;
+  closedHistoricalStrokes: number;
+  currentMonthForecastedStrokes: number;
+  currentMonthRemainingStrokes: number;
+  forecastedStrokesAfterMaintenance: number;
   totalProjectedStrokes: number;
   remainingStrokes: number;
   preventiveLimit: number;
   warningLimit: number;
   status: MaintenanceStatus;
   reachesLimitInMonth?: string;
-  window: WindowMonth[];           // N-1, N, N+1, N+2 individualmente
+  window: WindowMonth[];
   productBreakdown: ProductContribution[];
   errors: string[];
 };
@@ -52,7 +55,29 @@ type BomItemWithProduct = {
       referenceMonth: Date;
       plannedQuantity: number;
     }[];
+    projectProducts?: {
+      project: {
+        id: string;
+        forecasts: {
+          referenceMonth: Date;
+          plannedQuantity: number;
+        }[];
+      };
+    }[];
   };
+};
+
+type MaintenanceRecordForProjection = {
+  maintenanceDate: Date;
+  resetCounter: boolean;
+  strokesAtMaintenance?: number | null;
+};
+
+type MonthlySnapshotForProjection = {
+  referenceMonth: Date;
+  strokes: number;
+  actualStrokes?: number | null;
+  cycleStartedAt?: Date | null;
 };
 
 type ToolWithRelations = {
@@ -66,10 +91,9 @@ type ToolWithRelations = {
   preventiveLimit: number;
   warningLimit: number;
   bomItems: BomItemWithProduct[];
-  maintenanceRecords: { maintenanceDate: Date; resetCounter: boolean }[];
+  maintenanceRecords: MaintenanceRecordForProjection[];
+  monthlySnapshots?: MonthlySnapshotForProjection[];
 };
-
-// ─── Portuguese month names ───────────────────────────────────────────────────
 
 const PT_MONTHS = [
   "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
@@ -80,29 +104,32 @@ function formatMonthPt(date: Date): string {
   return `${PT_MONTHS[date.getMonth()]}/${date.getFullYear()}`;
 }
 
-function toMonthKey(date: Date): string {
+export function toMonthKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function startOfMonth(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function endOfMonth(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
 }
 
 function isSameMonth(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
 }
 
-// ─── Rolling window N-1, N, N+1, N+2 ─────────────────────────────────────────
-
 export function getWindowDates(referenceDate?: Date): { offset: number; date: Date; key: string; label: string; planningLabel: string }[] {
   const now = referenceDate ?? new Date();
   return [0, 1, 2, 3].map((offset) => {
     const date = new Date(now.getFullYear(), now.getMonth() + offset, 1);
-    // offset 0 = mês atual = N-1 na nomenclatura de planejamento
     const label = ["N-1", "N", "N+1", "N+2"][offset];
     return { offset, date, key: toMonthKey(date), planningLabel: label, label: formatMonthPt(date) };
   });
 }
 
-// ─── calculateStrokesForMonth ─────────────────────────────────────────────────
-
-function calculateStrokesForMonth(
+export function calculateStrokesForMonth(
   tool: ToolWithRelations,
   monthKey: string,
 ): number {
@@ -112,21 +139,48 @@ function calculateStrokesForMonth(
 
   let total = 0;
   for (const bomItem of tool.bomItems) {
-    for (const forecast of bomItem.product.forecasts) {
-      if (toMonthKey(new Date(forecast.referenceMonth)) !== monthKey) continue;
-      const strokes = (forecast.plannedQuantity * bomItem.quantityUsed) / tool.shotsPerStroke;
-      if (isFinite(strokes)) total += strokes;
+    const projectProducts = bomItem.product.projectProducts;
+    if (projectProducts && projectProducts.length > 0) {
+      // Use project forecasts: sum over all projects this product belongs to
+      for (const pp of projectProducts) {
+        for (const forecast of pp.project.forecasts) {
+          if (toMonthKey(new Date(forecast.referenceMonth)) !== monthKey) continue;
+          const strokes = (forecast.plannedQuantity * bomItem.quantityUsed) / tool.shotsPerStroke;
+          if (isFinite(strokes)) total += strokes;
+        }
+      }
+    } else {
+      // Fall back to product-level forecasts
+      for (const forecast of bomItem.product.forecasts) {
+        if (toMonthKey(new Date(forecast.referenceMonth)) !== monthKey) continue;
+        const strokes = (forecast.plannedQuantity * bomItem.quantityUsed) / tool.shotsPerStroke;
+        if (isFinite(strokes)) total += strokes;
+      }
     }
   }
   return total;
 }
 
-// ─── calculateForecastedStrokes ───────────────────────────────────────────────
+export function calculateClosedMonthStrokes(tool: ToolWithRelations, monthDate: Date): number {
+  const monthKey = toMonthKey(monthDate);
+  const monthlyStrokes = calculateStrokesForMonth(tool, monthKey);
+  const monthEnd = endOfMonth(monthDate);
+  const lastResetBeforeMonthEnd = tool.maintenanceRecords
+    .filter((m) => m.resetCounter && m.maintenanceDate <= monthEnd)
+    .sort((a, b) => b.maintenanceDate.getTime() - a.maintenanceDate.getTime())[0];
 
-/**
- * Soma de batidas previstas dentro da janela N-1, N, N+1, N+2.
- * Se referenceMonth for passado, usa apenas aquele mês (para chamadas pontuais).
- */
+  if (!lastResetBeforeMonthEnd) return Math.round(monthlyStrokes);
+
+  if (isSameMonth(lastResetBeforeMonthEnd.maintenanceDate, monthDate)) {
+    return Math.max(
+      0,
+      Math.round(monthlyStrokes - (lastResetBeforeMonthEnd.strokesAtMaintenance ?? 0)),
+    );
+  }
+
+  return Math.round(monthlyStrokes);
+}
+
 export function calculateForecastedStrokes(
   tool: ToolWithRelations,
   referenceMonth?: Date,
@@ -136,19 +190,9 @@ export function calculateForecastedStrokes(
   }
 
   if (referenceMonth) {
-    // chamada pontual — mantém compatibilidade
-    let total = 0;
-    for (const bomItem of tool.bomItems) {
-      for (const forecast of bomItem.product.forecasts) {
-        if (!isSameMonth(new Date(forecast.referenceMonth), referenceMonth)) continue;
-        const strokes = (forecast.plannedQuantity * bomItem.quantityUsed) / tool.shotsPerStroke;
-        if (isFinite(strokes)) total += strokes;
-      }
-    }
-    return total;
+    return calculateStrokesForMonth(tool, toMonthKey(referenceMonth));
   }
 
-  // janela rolante N-1..N+2
   const windowKeys = new Set(getWindowDates().map((w) => w.key));
   let total = 0;
   for (const bomItem of tool.bomItems) {
@@ -160,8 +204,6 @@ export function calculateForecastedStrokes(
   }
   return total;
 }
-
-// ─── getMaintenanceStatus ─────────────────────────────────────────────────────
 
 export function getMaintenanceStatus(
   currentStrokes: number,
@@ -182,13 +224,6 @@ export function getMaintenanceStatus(
   return "OK";
 }
 
-// ─── getMonthWhenReachesLimit ─────────────────────────────────────────────────
-
-/**
- * Caminha pelos meses de N em diante (até 24) e retorna o primeiro em que
- * o acumulado cruzaria o preventiveLimit.
- * Usa apenas meses futuros (offset >= 0) pois N-1 já está no passado.
- */
 export function getMonthWhenReachesLimit(tool: ToolWithRelations, referenceDate?: Date): string | undefined {
   if (!tool.shotsPerStroke || tool.shotsPerStroke <= 0 || !isFinite(tool.shotsPerStroke)) {
     return undefined;
@@ -199,9 +234,7 @@ export function getMonthWhenReachesLimit(tool: ToolWithRelations, referenceDate?
 
   for (let offset = 0; offset <= 23; offset++) {
     const date = new Date(now.getFullYear(), now.getMonth() + offset, 1);
-    const key = toMonthKey(date);
-    const strokes = calculateStrokesForMonth(tool, key);
-    cumulative += strokes;
+    cumulative += calculateStrokesForMonth(tool, toMonthKey(date));
     if (cumulative >= tool.preventiveLimit) {
       return formatMonthPt(date);
     }
@@ -210,37 +243,23 @@ export function getMonthWhenReachesLimit(tool: ToolWithRelations, referenceDate?
   return undefined;
 }
 
-// ─── calculateEstimatedStrokes ────────────────────────────────────────────────
-// Acumula batidas desde a data da última manutenção até hoje usando os forecasts
-// proporcionalmente aos dias corridos em cada mês.
-
 function calculateEstimatedStrokes(
   maintenanceDate: Date,
   tool: ToolWithRelations,
   today: Date = new Date(),
 ): number {
   let total = 0;
-
-  // Caminha mês a mês desde o mês da manutenção até o mês atual
-  let cursor = new Date(maintenanceDate.getFullYear(), maintenanceDate.getMonth(), 1);
-  const todayMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  let cursor = startOfMonth(maintenanceDate);
+  const todayMonthStart = startOfMonth(today);
 
   while (cursor <= todayMonthStart) {
     const daysInMonth = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate();
-    const monthKey = toMonthKey(cursor);
-    const monthlyStrokes = calculateStrokesForMonth(tool, monthKey);
+    const monthlyStrokes = calculateStrokesForMonth(tool, toMonthKey(cursor));
 
-    const isMaintenanceMonth =
-      cursor.getFullYear() === maintenanceDate.getFullYear() &&
-      cursor.getMonth() === maintenanceDate.getMonth();
-    const isTodayMonth =
-      cursor.getFullYear() === today.getFullYear() &&
-      cursor.getMonth() === today.getMonth();
-
-    // dayFrom = exclusivo (conta a partir do dia seguinte ao evento)
-    // dayTo   = inclusivo
+    const isMaintenanceMonth = isSameMonth(cursor, maintenanceDate);
+    const isTodayMonth = isSameMonth(cursor, today);
     const dayFrom = isMaintenanceMonth ? maintenanceDate.getDate() : 0;
-    const dayTo   = isTodayMonth       ? today.getDate()           : daysInMonth;
+    const dayTo = isTodayMonth ? today.getDate() : daysInMonth;
 
     const daysElapsed = dayTo - dayFrom;
     if (daysElapsed > 0 && monthlyStrokes > 0) {
@@ -253,19 +272,112 @@ function calculateEstimatedStrokes(
   return Math.round(total);
 }
 
-// ─── getToolProjection ────────────────────────────────────────────────────────
+function getLastReset(tool: ToolWithRelations): MaintenanceRecordForProjection | undefined {
+  return tool.maintenanceRecords
+    .filter((m) => m.resetCounter)
+    .sort((a, b) => b.maintenanceDate.getTime() - a.maintenanceDate.getTime())[0];
+}
+
+function getClosedHistoricalStrokes(
+  tool: ToolWithRelations,
+  lastReset: MaintenanceRecordForProjection | undefined,
+  today: Date,
+): number {
+  if (!lastReset || !tool.monthlySnapshots?.length) return 0;
+
+  const currentMonthStart = startOfMonth(today);
+  return tool.monthlySnapshots
+    .filter((snapshot) => {
+      const referenceMonth = startOfMonth(new Date(snapshot.referenceMonth));
+      const cycleStartedAt = snapshot.cycleStartedAt ? new Date(snapshot.cycleStartedAt) : null;
+      return (
+        referenceMonth < currentMonthStart &&
+        referenceMonth >= startOfMonth(lastReset.maintenanceDate) &&
+        (!cycleStartedAt || cycleStartedAt.getTime() === lastReset.maintenanceDate.getTime())
+      );
+    })
+    .reduce((sum, snapshot) => sum + (snapshot.actualStrokes ?? snapshot.strokes), 0);
+}
+
+function getEstimatedHistoricalBeforeCurrentMonth(
+  tool: ToolWithRelations,
+  lastReset: MaintenanceRecordForProjection | undefined,
+  today: Date,
+): number {
+  if (!lastReset || isSameMonth(lastReset.maintenanceDate, today)) return 0;
+
+  const previousMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+  return calculateEstimatedStrokes(lastReset.maintenanceDate, tool, previousMonthEnd);
+}
+
+function getCurrentMonthElapsedStrokes(
+  tool: ToolWithRelations,
+  lastReset: MaintenanceRecordForProjection | undefined,
+  today: Date,
+): number {
+  const currentMonthStart = startOfMonth(today);
+  const estimateStart = lastReset && isSameMonth(lastReset.maintenanceDate, today)
+    ? lastReset.maintenanceDate
+    : currentMonthStart;
+  return calculateEstimatedStrokes(estimateStart, tool, today);
+}
+
+function getCurrentMonthRemainingStrokes(
+  lastReset: MaintenanceRecordForProjection | undefined,
+  currentMonthStrokes: number,
+  today: Date,
+): number {
+  if (lastReset && isSameMonth(lastReset.maintenanceDate, today)) {
+    return Math.max(0, Math.round(currentMonthStrokes - (lastReset.strokesAtMaintenance ?? 0)));
+  }
+  return Math.round(currentMonthStrokes);
+}
+
+function getForecastedStrokesAfterMaintenance(
+  window: WindowMonth[],
+  currentMonthRemainingStrokes: number,
+): number {
+  return currentMonthRemainingStrokes + window
+    .filter((m) => m.offset > 0)
+    .reduce((sum, m) => sum + m.strokes, 0);
+}
+
+function getMonthWhenReachesLimitFromCycle(
+  tool: ToolWithRelations,
+  initialClosedStrokes: number,
+  currentMonthRemainingStrokes: number,
+  referenceDate?: Date,
+): string | undefined {
+  if (!tool.shotsPerStroke || tool.shotsPerStroke <= 0 || !isFinite(tool.shotsPerStroke)) {
+    return undefined;
+  }
+
+  const now = referenceDate ?? new Date();
+  let cumulative = initialClosedStrokes;
+
+  for (let offset = 0; offset <= 23; offset++) {
+    const date = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+    const strokes = offset === 0
+      ? currentMonthRemainingStrokes
+      : calculateStrokesForMonth(tool, toMonthKey(date));
+    cumulative += strokes;
+    if (cumulative >= tool.preventiveLimit) {
+      return formatMonthPt(date);
+    }
+  }
+
+  return undefined;
+}
 
 export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date): ToolProjection {
   const errors: string[] = [];
 
   if (!tool.shotsPerStroke || tool.shotsPerStroke <= 0 || !isFinite(tool.shotsPerStroke)) {
-    errors.push("Quantidade por shot inválida (deve ser maior que zero)");
+    errors.push("Quantidade por shot invalida (deve ser maior que zero)");
   }
 
   const today = referenceDate ?? new Date();
-  const windowDates = getWindowDates(referenceDate);
-
-  const window: WindowMonth[] = windowDates.map(({ offset, key, label }) => ({
+  const window: WindowMonth[] = getWindowDates(referenceDate).map(({ offset, key, label }) => ({
     key,
     label,
     offset,
@@ -273,41 +385,48 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
   }));
 
   const forecastedStrokes = window.reduce((sum, m) => sum + m.strokes, 0);
-
-  // Usa batidas estimadas (calculadas por dia desde a última manutenção) se disponível,
-  // caso contrário usa o contador manual currentStrokes como fallback.
-  const lastReset = tool.maintenanceRecords
-    .filter((m) => m.resetCounter)
-    .sort((a, b) => b.maintenanceDate.getTime() - a.maintenanceDate.getTime())[0];
-  const hasMaintenanceInReferenceMonth = lastReset
-    ? isSameMonth(lastReset.maintenanceDate, today)
-    : false;
+  const currentMonthForecastedStrokes = window.find((m) => m.offset === 0)?.strokes ?? 0;
+  const lastReset = getLastReset(tool);
+  const hasMaintenanceInReferenceMonth = lastReset ? isSameMonth(lastReset.maintenanceDate, today) : false;
+  const hasMonthlySnapshots = !!tool.monthlySnapshots?.length;
+  const closedHistoricalStrokes = hasMonthlySnapshots
+    ? getClosedHistoricalStrokes(tool, lastReset, today)
+    : getEstimatedHistoricalBeforeCurrentMonth(tool, lastReset, today);
+  const currentMonthElapsedStrokes = getCurrentMonthElapsedStrokes(tool, lastReset, today);
+  const currentMonthRemainingStrokes = getCurrentMonthRemainingStrokes(
+    lastReset,
+    currentMonthForecastedStrokes,
+    today,
+  );
+  const forecastedStrokesAfterMaintenance = getForecastedStrokesAfterMaintenance(
+    window,
+    currentMonthRemainingStrokes,
+  );
 
   let estimatedStrokes: number;
   if (lastReset) {
-    // Calcula proporcionalmente desde a última manutenção
-    estimatedStrokes = calculateEstimatedStrokes(lastReset.maintenanceDate, tool, today);
+    estimatedStrokes = hasMonthlySnapshots
+      ? closedHistoricalStrokes + currentMonthElapsedStrokes
+      : calculateEstimatedStrokes(lastReset.maintenanceDate, tool, today);
   } else if (tool.currentStrokes > 0) {
-    // Sem manutenção registrada mas com valor manual: respeita o que foi digitado
     estimatedStrokes = tool.currentStrokes;
   } else {
-    // Sem manutenção e sem valor manual: estima a partir do início do mês atual (N-1)
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    estimatedStrokes = calculateEstimatedStrokes(startOfMonth, tool, today);
+    estimatedStrokes = calculateEstimatedStrokes(startOfMonth(today), tool, today);
   }
 
-  const totalProjectedStrokes = estimatedStrokes + forecastedStrokes;
+  // Portion of the current month not yet captured by estimatedStrokes (avoids double-counting in limit forecast).
+  const currentMonthTrueRemaining = lastReset
+    ? Math.max(0, currentMonthRemainingStrokes - currentMonthElapsedStrokes)
+    : currentMonthRemainingStrokes;
+
+  const totalProjectedStrokes = lastReset
+    ? estimatedStrokes + forecastedStrokesAfterMaintenance
+    : estimatedStrokes + forecastedStrokes;
   const remainingStrokes = tool.preventiveLimit - totalProjectedStrokes;
-
-  const status = getMaintenanceStatus(
-    estimatedStrokes,
-    forecastedStrokes,
-    tool.preventiveLimit,
-    tool.warningLimit,
-    tool.shotsPerStroke,
-  );
-
-  const reachesLimitInMonth = getMonthWhenReachesLimit(tool, referenceDate);
+  const status = getMaintenanceStatus(0, totalProjectedStrokes, tool.preventiveLimit, tool.warningLimit, tool.shotsPerStroke);
+  const reachesLimitInMonth = lastReset
+    ? getMonthWhenReachesLimitFromCycle(tool, estimatedStrokes, currentMonthTrueRemaining, referenceDate)
+    : getMonthWhenReachesLimit(tool, referenceDate);
 
   const productBreakdown: ProductContribution[] = [];
   if (tool.shotsPerStroke > 0 && isFinite(tool.shotsPerStroke)) {
@@ -318,7 +437,11 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
         byProduct.set(productId, { productId, productCode, strokesByMonth: {}, totalStrokes: 0 });
       }
       const entry = byProduct.get(productId)!;
-      for (const forecast of bomItem.product.forecasts) {
+      const projectProducts = bomItem.product.projectProducts;
+      const forecastSources = projectProducts && projectProducts.length > 0
+        ? projectProducts.flatMap((pp) => pp.project.forecasts)
+        : bomItem.product.forecasts;
+      for (const forecast of forecastSources) {
         const key = toMonthKey(new Date(forecast.referenceMonth));
         const strokes = (forecast.plannedQuantity * bomItem.quantityUsed) / tool.shotsPerStroke;
         if (!isFinite(strokes)) continue;
@@ -338,8 +461,13 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
     currentStrokes: tool.currentStrokes,
     lastMaintenanceDate: lastReset?.maintenanceDate.toISOString() ?? null,
     hasMaintenanceInReferenceMonth,
+    strokesAtLastMaintenance: lastReset?.strokesAtMaintenance ?? null,
     estimatedStrokes,
     forecastedStrokes,
+    closedHistoricalStrokes,
+    currentMonthForecastedStrokes,
+    currentMonthRemainingStrokes,
+    forecastedStrokesAfterMaintenance,
     totalProjectedStrokes,
     remainingStrokes,
     preventiveLimit: tool.preventiveLimit,
@@ -351,8 +479,6 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
     errors,
   };
 }
-
-// ─── getAllToolsProjection ────────────────────────────────────────────────────
 
 export function getAllToolsProjection(tools: ToolWithRelations[], referenceDate?: Date): ToolProjection[] {
   return tools.map((t) => getToolProjection(t, referenceDate));
