@@ -11,9 +11,9 @@ const PAGE_SIZE = 20;
 export default async function BomPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; search?: string; produto?: string }>;
+  searchParams: Promise<{ page?: string; search?: string; produto?: string; back?: string }>;
 }) {
-  const { page, search, produto } = await searchParams;
+  const { page, search, produto, back } = await searchParams;
 
   /* ── Vista de ferramentas de um produto ── */
   if (produto) {
@@ -36,10 +36,15 @@ export default async function BomPage({
 
     if (!product) redirect("/bom");
 
-    const backParams = new URLSearchParams();
-    if (page && page !== "1") backParams.set("page", page);
-    if (search) backParams.set("search", search);
-    const backUrl = `/bom${backParams.size > 0 ? `?${backParams.toString()}` : ""}`;
+    let backUrl: string;
+    if (back) {
+      backUrl = decodeURIComponent(back);
+    } else {
+      const backParams = new URLSearchParams();
+      if (page && page !== "1") backParams.set("page", page);
+      if (search) backParams.set("search", search);
+      backUrl = `/bom${backParams.size > 0 ? `?${backParams.toString()}` : ""}`;
+    }
 
     return (
       <div>

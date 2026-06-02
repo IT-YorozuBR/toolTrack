@@ -84,6 +84,18 @@ export function Controle50KFilters({ presses, availableMonths }: Props) {
         }}
         className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-48"
       />
+
+      <select
+        value={searchParams.get("sort") ?? "saldo_asc"}
+        onChange={(e) => updateFilter("sort", e.target.value)}
+        className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+      >
+        <option value="saldo_asc">Saldo ↑ (menor primeiro)</option>
+        <option value="saldo_desc">Saldo ↓ (maior primeiro)</option>
+        <option value="code_asc">Ferramental A→Z</option>
+        <option value="code_desc">Ferramental Z→A</option>
+        <option value="estimado_desc">Estimadas ↓</option>
+      </select>
     </div>
   );
 }

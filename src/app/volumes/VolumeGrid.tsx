@@ -8,6 +8,7 @@ export type WindowCol = {
   label: string;
   offset: number;
   date: string; // ISO "YYYY-MM-DD" — passed from server to avoid timezone issues
+  isCurrent?: boolean;
 };
 
 export type ForecastCell = {

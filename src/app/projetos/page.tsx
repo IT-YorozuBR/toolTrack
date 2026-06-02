@@ -22,7 +22,11 @@ export default async function ProjetosPage({
         where: { id: projeto },
         include: {
           projectProducts: {
-            include: { product: true },
+            include: {
+              product: {
+                include: { _count: { select: { bomItems: true } } },
+              },
+            },
             orderBy: { product: { code: "asc" } },
           },
         },
@@ -30,7 +34,7 @@ export default async function ProjetosPage({
       prisma.product.findMany({
         where: { active: true },
         orderBy: { code: "asc" },
-        select: { id: true, code: true, modelo: true, description: true },
+        select: { id: true, code: true, modelo: true, description: true, _count: { select: { bomItems: true } } },
       }),
     ]);
 

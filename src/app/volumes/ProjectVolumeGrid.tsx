@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useTransition } from "react";
+import { useState, useRef, useCallback, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { upsertProjectForecast } from "@/lib/actions/project-forecasts";
 import type { WindowCol } from "./VolumeGrid";
@@ -24,6 +24,36 @@ export function ProjectVolumeGrid({ rows, cols }: Props) {
   const [saving, setSaving] = useState<Set<string>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
   const [, startTransition] = useTransition();
+
+  // Drag-to-scroll
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const drag = useRef({ pending: false, dragging: false, startX: 0, scrollLeft: 0 });
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    drag.current = { pending: true, dragging: false, startX: e.pageX, scrollLeft: el.scrollLeft };
+  }, []);
+
+  const onMouseMove = useCallback((e: React.MouseEvent) => {
+    const el = scrollRef.current;
+    if (!el || !drag.current.pending) return;
+    const delta = e.pageX - drag.current.startX;
+    if (!drag.current.dragging && Math.abs(delta) < 5) return;
+    drag.current.dragging = true;
+    el.style.cursor = "grabbing";
+    el.style.userSelect = "none";
+    el.scrollLeft = drag.current.scrollLeft - delta;
+  }, []);
+
+  const onMouseUp = useCallback(() => {
+    drag.current.pending = false;
+    drag.current.dragging = false;
+    if (scrollRef.current) {
+      scrollRef.current.style.cursor = "grab";
+      scrollRef.current.style.userSelect = "";
+    }
+  }, []);
 
   function cellKey(projectId: string, monthKey: string) {
     return `${projectId}_${monthKey}`;
@@ -71,20 +101,25 @@ export function ProjectVolumeGrid({ rows, cols }: Props) {
     if (e.key === "Escape") cancelEdit();
   }
 
-  const planningLabels = ["N-1", "N", "N+1", "N+2"];
-
   const colLabel = (col: WindowCol) => (
     <div className="text-center">
-      <div className={`text-xs font-medium uppercase ${col.offset === 0 ? "text-blue-600 font-semibold" : "text-gray-600"}`}>
+      <div className={`text-xs font-medium uppercase ${col.isCurrent ? "text-blue-600 font-semibold" : "text-gray-600"}`}>
         {col.label}
       </div>
-      <div className="text-[10px] text-gray-400 mt-0.5">{planningLabels[col.offset]}</div>
+      {col.isCurrent && <div className="text-[10px] text-blue-400 mt-0.5">atual</div>}
     </div>
   );
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-      <div className="overflow-x-auto">
+      <div
+        ref={scrollRef}
+        className="overflow-x-auto cursor-grab"
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        onMouseUp={onMouseUp}
+        onMouseLeave={onMouseUp}
+      >
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
@@ -129,7 +164,7 @@ export function ProjectVolumeGrid({ rows, cols }: Props) {
                           className={`w-full rounded-md px-3 py-1.5 text-sm tabular-nums transition-colors
                             ${isSaving ? "opacity-50 cursor-wait" : "cursor-pointer hover:bg-blue-50 hover:text-blue-700"}
                             ${cell.plannedQuantity ? "text-gray-900 font-medium" : "text-gray-300"}
-                            ${col.offset === 0 ? "bg-blue-50/40" : ""}
+                            ${col.isCurrent ? "bg-blue-50/40" : ""}
                           `}
                         >
                           {isSaving ? (

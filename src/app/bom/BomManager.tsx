@@ -2,6 +2,9 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createBomItem, deleteBomItem, updateBomItem } from "@/lib/actions/bom";
+import { fetchToolProjection } from "@/lib/actions/tool-projection";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import type { ToolProjection } from "@/lib/calculations/strokes";
 import type { Tool, BomItem, Product } from "@prisma/client";
 
 type SlimTool = Pick<Tool, "id" | "code" | "description" | "shotsPerStroke">;
@@ -21,6 +24,15 @@ export function BomManager({ product, allTools, backUrl }: Props) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState<string | null>(null);
+  const [projection, setProjection] = useState<ToolProjection | null>(null);
+  const [projectionLoading, setProjectionLoading] = useState<string | null>(null);
+
+  async function handleViewProjection(toolId: string) {
+    setProjectionLoading(toolId);
+    const result = await fetchToolProjection(toolId);
+    setProjectionLoading(null);
+    if (result) setProjection(result);
+  }
 
   const addedToolIds = useMemo(
     () => new Set(product.bomItems.map((b) => b.toolId)),
@@ -105,8 +117,10 @@ export function BomManager({ product, allTools, backUrl }: Props) {
               key={item.id}
               item={item}
               loading={loading === item.id}
+              projectionLoading={projectionLoading === item.tool.id}
               onRemove={() => handleRemove(item.id)}
               onQuantityBlur={(val) => handleQuantityBlur(item.id, val)}
+              onViewProjection={() => handleViewProjection(item.tool.id)}
             />
           ))}
         </div>
@@ -165,6 +179,63 @@ export function BomManager({ product, allTools, backUrl }: Props) {
           </div>
         </div>
       )}
+
+      {/* Modal de projeção 50K */}
+      {projection && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setProjection(null)} />
+          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-2xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">{projection.code}</h3>
+                {projection.description && (
+                  <p className="text-xs text-gray-500 mt-0.5">{projection.description}</p>
+                )}
+              </div>
+              <button onClick={() => setProjection(null)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+            </div>
+            <div className="px-5 py-4 space-y-4">
+              {/* Status + atinge */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <StatusBadge status={projection.status} />
+                {projection.reachesLimitInMonth && (
+                  <span className="text-xs text-gray-500">Atinge limite em <strong>{projection.reachesLimitInMonth}</strong></span>
+                )}
+              </div>
+
+              {/* Números principais */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { label: "Estimadas", value: Math.round(projection.estimatedStrokes).toLocaleString("pt-BR") },
+                  { label: "Projetado total", value: Math.round(projection.totalProjectedStrokes).toLocaleString("pt-BR") },
+                  { label: "Saldo 50K", value: Math.round(projection.remainingStrokes).toLocaleString("pt-BR"), highlight: projection.remainingStrokes < 5000 },
+                  { label: "Limite", value: projection.preventiveLimit.toLocaleString("pt-BR") },
+                ].map(({ label, value, highlight }) => (
+                  <div key={label} className="bg-gray-50 rounded-lg px-3 py-2">
+                    <p className="text-[10px] text-gray-500 uppercase font-medium">{label}</p>
+                    <p className={`text-base font-semibold tabular-nums mt-0.5 ${highlight ? "text-red-600" : "text-gray-900"}`}>{value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Janela de meses */}
+              <div>
+                <p className="text-xs text-gray-500 font-medium uppercase mb-2">Previsão por mês</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {projection.window.map((m) => (
+                    <div key={m.key} className={`rounded-lg px-3 py-2 text-center ${m.offset === 0 ? "bg-blue-50 border border-blue-200" : "bg-gray-50"}`}>
+                      <p className={`text-[10px] font-medium uppercase ${m.offset === 0 ? "text-blue-600" : "text-gray-500"}`}>{m.label}</p>
+                      <p className="text-sm font-semibold tabular-nums mt-0.5 text-gray-800">
+                        {m.strokes > 0 ? Math.round(m.strokes).toLocaleString("pt-BR") : "—"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -172,13 +243,17 @@ export function BomManager({ product, allTools, backUrl }: Props) {
 function ToolCard({
   item,
   loading,
+  projectionLoading,
   onRemove,
   onQuantityBlur,
+  onViewProjection,
 }: {
   item: BomItem & { tool: Tool };
   loading: boolean;
+  projectionLoading: boolean;
   onRemove: () => void;
   onQuantityBlur: (val: number) => void;
+  onViewProjection: () => void;
 }) {
   const [qty, setQty] = useState(Math.round(item.quantityUsed));
 
@@ -215,6 +290,13 @@ function ToolCard({
           className="w-20 border border-gray-300 rounded px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
+      <button
+        onClick={onViewProjection}
+        disabled={projectionLoading}
+        className="mt-3 w-full text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded px-2 py-1 transition-colors disabled:opacity-50 text-left"
+      >
+        {projectionLoading ? "Carregando..." : "Ver projeção 50K →"}
+      </button>
     </div>
   );
 }

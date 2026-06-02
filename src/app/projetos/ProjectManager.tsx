@@ -6,7 +6,9 @@ import { addProductToProject, removeProductFromProject } from "@/lib/actions/pro
 import { toggleProjectActive } from "@/lib/actions/projects";
 import type { Project, Product, ProjectProduct } from "@prisma/client";
 
-type SlimProduct = Pick<Product, "id" | "code" | "modelo" | "description">;
+type SlimProduct = Pick<Product, "id" | "code" | "modelo" | "description"> & {
+  _count: { bomItems: number };
+};
 
 type ProjectWithProducts = Project & {
   projectProducts: Array<ProjectProduct & { product: SlimProduct }>;
@@ -142,13 +144,27 @@ export function ProjectManager({ project, allProducts, backUrl }: Props) {
               >
                 ×
               </button>
-              <p className="font-semibold text-gray-900 text-sm pr-8">{product.code}</p>
-              {product.modelo && (
-                <p className="text-xs text-gray-500 mt-0.5">{product.modelo}</p>
-              )}
-              {product.description && (
-                <p className="text-xs text-gray-400 mt-0.5 truncate">{product.description}</p>
-              )}
+              <Link
+                href={`/bom?produto=${productId}&back=${encodeURIComponent(`/projetos?projeto=${project.id}`)}`}
+                className="block pr-8 group"
+                title="Ver ferramentas no BOM"
+              >
+                <p className="font-semibold text-gray-900 text-sm group-hover:text-blue-600 transition-colors">{product.code}</p>
+                {product.modelo && (
+                  <p className="text-xs text-gray-500 mt-0.5">{product.modelo}</p>
+                )}
+                {product.description && (
+                  <p className="text-xs text-gray-400 mt-0.5 truncate">{product.description}</p>
+                )}
+                <div className="flex items-center justify-between mt-2">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                    product._count.bomItems > 0 ? "bg-blue-100 text-blue-700" : "bg-yellow-100 text-yellow-700"
+                  }`}>
+                    {product._count.bomItems} {product._count.bomItems === 1 ? "ferramenta" : "ferramentas"}
+                  </span>
+                  <span className="text-[10px] text-blue-400 group-hover:text-blue-600">Ver →</span>
+                </div>
+              </Link>
             </div>
           ))}
         </div>

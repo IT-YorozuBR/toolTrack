@@ -37,7 +37,7 @@ function formatDate(date: string | null): string {
 export default async function Controle50KPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; press?: string; search?: string; page?: string; minStrokes?: string; reachesMonth?: string; simulatedate?: string }>;
+  searchParams: Promise<{ status?: string; press?: string; search?: string; page?: string; minStrokes?: string; reachesMonth?: string; simulatedate?: string; sort?: string }>;
 }) {
   const params = await searchParams;
   const minStrokes = params.minStrokes ? parseInt(params.minStrokes) : undefined;
@@ -123,6 +123,17 @@ export default async function Controle50KPage({
     projections = projections.filter((p) => p.reachesLimitInMonth === params.reachesMonth);
   }
 
+  const sort = params.sort ?? "saldo_asc";
+  projections = [...projections].sort((a, b) => {
+    switch (sort) {
+      case "saldo_desc":    return b.remainingStrokes - a.remainingStrokes;
+      case "code_asc":      return a.code.localeCompare(b.code);
+      case "code_desc":     return b.code.localeCompare(a.code);
+      case "estimado_desc": return b.estimatedStrokes - a.estimatedStrokes;
+      default:              return a.remainingStrokes - b.remainingStrokes; // saldo_asc
+    }
+  });
+
   const currentPage = Math.max(1, parseInt(params.page ?? "1"));
   const totalPages = Math.ceil(projections.length / PAGE_SIZE);
   const paginatedProjections = projections.slice(
@@ -138,6 +149,7 @@ export default async function Controle50KPage({
     if (params.minStrokes) urlParams.set("minStrokes", params.minStrokes);
     if (params.reachesMonth) urlParams.set("reachesMonth", params.reachesMonth);
     if (params.simulatedate) urlParams.set("simulatedate", params.simulatedate);
+    if (params.sort) urlParams.set("sort", params.sort);
     urlParams.set("page", String(p));
     return `/controle-50k?${urlParams.toString()}`;
   }
