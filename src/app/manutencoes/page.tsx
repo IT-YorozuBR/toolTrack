@@ -72,27 +72,33 @@ export default async function ManutencoesPage({
       }
     : {};
 
-  const [tools, total] = await Promise.all([
-    prisma.tool.findMany({
-      where,
-      orderBy: { code: "asc" },
-      skip: (currentPage - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
-      select: {
-        id: true,
-        code: true,
-        description: true,
-        press: true,
-        _count: { select: { maintenanceRecords: true } },
-        maintenanceRecords: {
-          orderBy: { maintenanceDate: "desc" },
-          take: 1,
-          select: { maintenanceDate: true, maintenanceType: true },
-        },
+  const allTools = await prisma.tool.findMany({
+    where,
+    select: {
+      id: true,
+      code: true,
+      description: true,
+      press: true,
+      _count: { select: { maintenanceRecords: true } },
+      maintenanceRecords: {
+        orderBy: { maintenanceDate: "desc" },
+        take: 1,
+        select: { maintenanceDate: true, maintenanceType: true },
       },
-    }),
-    prisma.tool.count({ where }),
-  ]);
+    },
+  });
+
+  allTools.sort((a, b) => {
+    const aDate = a.maintenanceRecords[0]?.maintenanceDate ?? null;
+    const bDate = b.maintenanceRecords[0]?.maintenanceDate ?? null;
+    if (aDate && bDate) return bDate.getTime() - aDate.getTime();
+    if (aDate) return -1;
+    if (bDate) return 1;
+    return a.code.localeCompare(b.code);
+  });
+
+  const total = allTools.length;
+  const tools = allTools.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
