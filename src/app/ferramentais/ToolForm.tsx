@@ -49,6 +49,10 @@ export function ToolForm({ tool }: { tool?: Tool }) {
           <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
           <input name="description" defaultValue={tool?.description ?? ""} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Descrição opcional" />
         </div>
+        {/* Prensa e Linha ocultados da UI — mantidos no sistema via campos ocultos (preserva o valor ao editar). */}
+        <input type="hidden" name="press" defaultValue={tool?.press ?? ""} />
+        <input type="hidden" name="line" defaultValue={tool?.line ?? ""} />
+        {/*
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Prensa *</label>
           <input name="press" defaultValue={tool?.press} required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex: 54401" />
@@ -57,6 +61,7 @@ export function ToolForm({ tool }: { tool?: Tool }) {
           <label className="block text-sm font-medium text-gray-700 mb-1">Linha</label>
           <input name="line" defaultValue={tool?.line ?? ""} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex: V206AY" />
         </div>
+        */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Quantidade por Shot *</label>
           <input name="shotsPerStroke" type="number" min="1" defaultValue={tool?.shotsPerStroke ?? 1} required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />

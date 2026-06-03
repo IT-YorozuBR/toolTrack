@@ -40,7 +40,8 @@ export default async function Controle50KPage({
   searchParams: Promise<{ status?: string; press?: string; search?: string; page?: string; minStrokes?: string; reachesMonth?: string; simulatedate?: string; sort?: string; statusView?: string }>;
 }) {
   const params = await searchParams;
-  const isRealView = params.statusView === "real";
+  // Real é o padrão; só vai para estimado quando explicitamente pedido (?statusView=estimado).
+  const isRealView = params.statusView !== "estimado";
   const minStrokes = params.minStrokes ? parseInt(params.minStrokes) : undefined;
   const referenceDate = params.simulatedate ? new Date(params.simulatedate) : undefined;
 
@@ -127,10 +128,22 @@ export default async function Controle50KPage({
     projections = projections.filter((p) => p.reachesLimitInMonth === params.reachesMonth);
   }
 
-  const sort = params.sort ?? "saldo_asc";
+  // Sem ordenação explícita, ordena pelo saldo da visão ativa (real por padrão).
+  const sort = params.sort ?? (isRealView ? "real_asc" : "saldo_asc");
+  // Ordena por saldo real mantendo ferramentas sem leitura (null) sempre no fim.
+  const compareRealRemaining = (a: typeof projections[number], b: typeof projections[number], asc: boolean) => {
+    const av = a.realRemainingStrokes;
+    const bv = b.realRemainingStrokes;
+    if (av === null && bv === null) return 0;
+    if (av === null) return 1;
+    if (bv === null) return -1;
+    return asc ? av - bv : bv - av;
+  };
   projections = [...projections].sort((a, b) => {
     switch (sort) {
       case "saldo_desc":    return b.remainingStrokes - a.remainingStrokes;
+      case "real_asc":      return compareRealRemaining(a, b, true);
+      case "real_desc":     return compareRealRemaining(a, b, false);
       case "code_asc":      return a.code.localeCompare(b.code);
       case "code_desc":     return b.code.localeCompare(a.code);
       case "estimado_desc": return b.estimatedStrokes - a.estimatedStrokes;
@@ -169,7 +182,8 @@ export default async function Controle50KPage({
     if (params.reachesMonth) urlParams.set("reachesMonth", params.reachesMonth);
     if (params.simulatedate) urlParams.set("simulatedate", params.simulatedate);
     if (params.sort) urlParams.set("sort", params.sort);
-    if (!isRealView) urlParams.set("statusView", "real");
+    // Real é o padrão (sem param). Estando em real, o toggle leva para estimado; estando em estimado, volta ao padrão.
+    if (isRealView) urlParams.set("statusView", "estimado");
     const qs = urlParams.toString();
     return `/controle-50k${qs ? `?${qs}` : ""}`;
   }
@@ -233,7 +247,7 @@ export default async function Controle50KPage({
                     Últ. manut.
                   </th>
                   <th className="w-[8.5%] px-3 py-2 text-right text-[10px] font-medium text-gray-500 uppercase">
-                    Batidas Estimadas
+                    Batidas Estimadas Mensal
                   </th>
                   <th className="w-[8%] px-3 py-2 text-right text-[10px] font-medium text-blue-600 uppercase">
                     Acúmulo Real
@@ -254,7 +268,7 @@ export default async function Controle50KPage({
                     Saldo 50k Estimado
                   </th>
                   <th className="w-[8%] px-3 py-2 text-right text-[10px] font-medium text-gray-500 uppercase">
-                    Saldo 50k Real
+                    Saldo 50k Atual
                   </th>
                   <th className="w-[8%] px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">
                     <a

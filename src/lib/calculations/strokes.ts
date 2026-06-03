@@ -236,6 +236,28 @@ export function getMaintenanceStatus(
   return "OK";
 }
 
+// Status considerando estado atual e projeção separadamente:
+// - VENCIDO só pelo acúmulo ATUAL (já passou do limite — precisa de manutenção agora).
+// - PROGRAMAR_PREVENTIVA / ATENÇÃO podem disparar pela projeção (aviso antecipado para planejar).
+export function getProjectedMaintenanceStatus(
+  currentAccumulated: number,
+  projectedTotal: number,
+  preventiveLimit: number,
+  warningLimit: number,
+  shotsPerStroke: number,
+): MaintenanceStatus {
+  if (!shotsPerStroke || shotsPerStroke <= 0 || !isFinite(shotsPerStroke)) {
+    return "ERRO_CADASTRO";
+  }
+
+  const attentionLimit = warningLimit - 5000;
+
+  if (currentAccumulated >= preventiveLimit) return "VENCIDO";
+  if (currentAccumulated >= warningLimit || projectedTotal >= preventiveLimit) return "PROGRAMAR_PREVENTIVA";
+  if (currentAccumulated >= attentionLimit || projectedTotal >= warningLimit) return "ATENCAO";
+  return "OK";
+}
+
 export function getMonthWhenReachesLimit(tool: ToolWithRelations, referenceDate?: Date): string | undefined {
   if (!tool.shotsPerStroke || tool.shotsPerStroke <= 0 || !isFinite(tool.shotsPerStroke)) {
     return undefined;
@@ -360,17 +382,6 @@ function getCurrentMonthElapsedStrokes(
   return calculateEstimatedStrokes(estimateStart, tool, today);
 }
 
-function getCurrentMonthRemainingStrokes(
-  lastReset: MaintenanceRecordForProjection | undefined,
-  currentMonthStrokes: number,
-  today: Date,
-): number {
-  if (lastReset && isSameMonth(lastReset.maintenanceDate, today)) {
-    return Math.max(0, Math.round(currentMonthStrokes - (lastReset.strokesAtMaintenance ?? 0)));
-  }
-  return Math.round(currentMonthStrokes);
-}
-
 function getForecastedStrokesAfterMaintenance(
   window: WindowMonth[],
   currentMonthRemainingStrokes: number,
@@ -431,19 +442,20 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
     ? getClosedHistoricalStrokes(tool, lastReset, today)
     : getEstimatedHistoricalBeforeCurrentMonth(tool, lastReset, today);
   const currentMonthElapsedStrokes = getCurrentMonthElapsedStrokes(tool, lastReset, today);
-  const currentMonthRemainingStrokes = getCurrentMonthRemainingStrokes(
-    lastReset,
-    currentMonthForecastedStrokes,
-    today,
-  );
-  // O que ainda falta produzir no mês corrente: previsão do mês menos o que já decorreu até hoje.
+  // O que ainda falta produzir no mês corrente = previsão do mês − parte já decorrida desde o
+  // dia 1 (independe de manutenção). Corrige o mês com manutenção, que antes subtraía o contador
+  // inteiro (strokesAtMaintenance) e zerava o restante.
+  const currentMonthElapsedFromStart = calculateEstimatedStrokes(startOfMonth(today), tool, today);
   const currentMonthRemainingToDo = Math.max(
     0,
-    Math.round(currentMonthRemainingStrokes - currentMonthElapsedStrokes),
+    Math.round(currentMonthForecastedStrokes - currentMonthElapsedFromStart),
   );
+  // Mesmo conceito — exposto também como currentMonthRemainingStrokes (compatibilidade).
+  const currentMonthRemainingStrokes = currentMonthRemainingToDo;
+  // Projeção do ciclo: sobre o acúmulo até hoje soma o que falta do mês + os meses futuros.
   const forecastedStrokesAfterMaintenance = getForecastedStrokesAfterMaintenance(
     window,
-    currentMonthRemainingStrokes,
+    currentMonthRemainingToDo,
   );
 
   let estimatedStrokes: number;
@@ -473,7 +485,15 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
     : projectionBaseStrokes + forecastedStrokes;
   const remainingStrokes = tool.preventiveLimit - totalProjectedStrokes;
 
-  const status = getMaintenanceStatus(0, totalProjectedStrokes, tool.preventiveLimit, tool.warningLimit, tool.shotsPerStroke);
+  // VENCIDO só quando o acúmulo atual (real ou estimado) já passou do limite; a projeção
+  // pode no máximo disparar PROGRAMAR_PREVENTIVA / ATENÇÃO (aviso antecipado).
+  const status = getProjectedMaintenanceStatus(
+    projectionBaseStrokes,
+    totalProjectedStrokes,
+    tool.preventiveLimit,
+    tool.warningLimit,
+    tool.shotsPerStroke,
+  );
   // Status real: mesmos limiares, porém aplicados só ao acúmulo real (estado atual). Null sem leitura.
   const realStatus = realEstimatedStrokes !== null
     ? getMaintenanceStatus(0, realEstimatedStrokes, tool.preventiveLimit, tool.warningLimit, tool.shotsPerStroke)

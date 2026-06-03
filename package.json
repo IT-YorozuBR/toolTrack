@@ -10,7 +10,8 @@
     "lint": "eslint",
     "postinstall": "prisma generate",
     "db:seed": "ts-node --project tsconfig.seed.json prisma/seed.ts",
-    "db:seed-volumes": "ts-node --project tsconfig.seed.json prisma/seed-volumes.ts"
+    "db:seed-volumes": "ts-node --project tsconfig.seed.json prisma/seed-volumes.ts",
+    "db:seed-mai26": "ts-node --project tsconfig.seed.json prisma/seed-mai26.ts"
   },
   "prisma": {
     "seed": "ts-node --project tsconfig.seed.json prisma/seed.ts"

@@ -1,0 +1,2450 @@
+[
+  {
+    "item": "6040 110 049",
+    "maintainDate": "2025-08-15",
+    "qtySum": 69435,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "6040 100 836",
+    "maintainDate": "2026-01-02",
+    "qtySum": 56808,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54401 V206AY",
+    "maintainDate": "2026-02-05",
+    "qtySum": 55121,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55511 Y863AY",
+    "maintainDate": "2025-12-29",
+    "qtySum": 45051,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55511 Y864AY",
+    "maintainDate": "2025-12-29",
+    "qtySum": 45051,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55511 V346AY",
+    "maintainDate": "2026-01-09",
+    "qtySum": 37717,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55511 U597/8AY TF",
+    "maintainDate": "2025-10-29",
+    "qtySum": 33205,
+    "qtySumReal": 80581,
+    "nMinus1": 20968,
+    "n": 21372,
+    "nPlus1": 21792
+  },
+  {
+    "item": "50200-3M6-M01 56",
+    "maintainDate": "2025-04-14",
+    "qtySum": 33034,
+    "qtySumReal": 55412,
+    "nMinus1": 4400,
+    "n": 5625,
+    "nPlus1": 4100
+  },
+  {
+    "item": "54408 9LH0B",
+    "maintainDate": "2025-04-28",
+    "qtySum": 32342,
+    "qtySumReal": 50933,
+    "nMinus1": 5160,
+    "n": 3740,
+    "nPlus1": 3040
+  },
+  {
+    "item": "54850 9LH0D",
+    "maintainDate": "2025-04-28",
+    "qtySum": 32179,
+    "qtySumReal": 53530,
+    "nMinus1": 5160,
+    "n": 3740,
+    "nPlus1": 3040
+  },
+  {
+    "item": "54850 5RA0A",
+    "maintainDate": "2025-06-23",
+    "qtySum": 31974,
+    "qtySumReal": 49419,
+    "nMinus1": 5160,
+    "n": 3740,
+    "nPlus1": 3040
+  },
+  {
+    "item": "555G4 0965R",
+    "maintainDate": "2026-01-23",
+    "qtySum": 31960,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55511 7LR0A",
+    "maintainDate": "2024-05-08",
+    "qtySum": 31723,
+    "qtySumReal": 48110,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "50200-3M6-M01 65",
+    "maintainDate": "2025-12-30",
+    "qtySum": 31174,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "50200-TRY-0030-24",
+    "maintainDate": "2025-08-25",
+    "qtySum": 30624,
+    "qtySumReal": 60584,
+    "nMinus1": 7630,
+    "n": 7730,
+    "nPlus1": 6310
+  },
+  {
+    "item": "50200-TRY-0030-25",
+    "maintainDate": "2025-08-25",
+    "qtySum": 30624,
+    "qtySumReal": 60584,
+    "nMinus1": 7630,
+    "n": 7730,
+    "nPlus1": 6310
+  },
+  {
+    "item": "54450 7LR0A",
+    "maintainDate": "2024-06-03",
+    "qtySum": 30610,
+    "qtySumReal": 48775,
+    "nMinus1": 8840,
+    "n": 9480,
+    "nPlus1": 16800
+  },
+  {
+    "item": "54450 7LR1B",
+    "maintainDate": "2024-06-03",
+    "qtySum": 30610,
+    "qtySumReal": 48775,
+    "nMinus1": 8840,
+    "n": 9480,
+    "nPlus1": 16800
+  },
+  {
+    "item": "55314 5RA0A",
+    "maintainDate": "2025-06-23",
+    "qtySum": 30376,
+    "qtySumReal": 48121,
+    "nMinus1": 6220,
+    "n": 6080,
+    "nPlus1": 4640
+  },
+  {
+    "item": "55315 5RA0A",
+    "maintainDate": "2025-06-23",
+    "qtySum": 30376,
+    "qtySumReal": 48121,
+    "nMinus1": 6220,
+    "n": 6080,
+    "nPlus1": 4640
+  },
+  {
+    "item": "50200-TRY-0030-22",
+    "maintainDate": "2026-02-20",
+    "qtySum": 30162,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "50200-TRY-0030-23",
+    "maintainDate": "2026-02-20",
+    "qtySum": 30162,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55082 5552R",
+    "maintainDate": "2025-04-04",
+    "qtySum": 30148,
+    "qtySumReal": 58638,
+    "nMinus1": 2400,
+    "n": 1600,
+    "nPlus1": 3400
+  },
+  {
+    "item": "55056 5RA0A",
+    "maintainDate": "2025-05-20",
+    "qtySum": 29980,
+    "qtySumReal": 48485,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54414 7LR0A",
+    "maintainDate": "2024-06-04",
+    "qtySum": 29977,
+    "qtySumReal": 60119,
+    "nMinus1": 6990,
+    "n": 4160,
+    "nPlus1": 4960
+  },
+  {
+    "item": "54415 7LR0A",
+    "maintainDate": "2024-06-04",
+    "qtySum": 29977,
+    "qtySumReal": 60119,
+    "nMinus1": 6990,
+    "n": 4160,
+    "nPlus1": 4960
+  },
+  {
+    "item": "544H2 7LR1A",
+    "maintainDate": "2024-05-28",
+    "qtySum": 29597,
+    "qtySumReal": 58879,
+    "nMinus1": 6990,
+    "n": 4160,
+    "nPlus1": 4960
+  },
+  {
+    "item": "54036 9LH0B",
+    "maintainDate": "2025-12-30",
+    "qtySum": 29336,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55507 5RA0A",
+    "maintainDate": "2025-06-18",
+    "qtySum": 29191,
+    "qtySumReal": 47696,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54408 4459R",
+    "maintainDate": "2024-10-11",
+    "qtySum": 29052,
+    "qtySumReal": 36380,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "8200 481 387",
+    "maintainDate": "2025-04-30",
+    "qtySum": 29000,
+    "qtySumReal": 35200,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55511 Y163AY",
+    "maintainDate": "2025-10-30",
+    "qtySum": 28983,
+    "qtySumReal": 76883,
+    "nMinus1": 11070,
+    "n": 11280,
+    "nPlus1": 10650
+  },
+  {
+    "item": "544K7 7LR0A",
+    "maintainDate": "2024-06-03",
+    "qtySum": 28831,
+    "qtySumReal": 38738,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55197 6067R",
+    "maintainDate": "2024-10-11",
+    "qtySum": 28744,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54401 W539AY",
+    "maintainDate": "2025-10-06",
+    "qtySum": 28641,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55196 1853R",
+    "maintainDate": "2024-10-11",
+    "qtySum": 27600,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54528 7LR1A",
+    "maintainDate": "2024-05-10",
+    "qtySum": 27457,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55318 7LR0A",
+    "maintainDate": "2024-05-03",
+    "qtySum": 27378,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55319 7LR0A",
+    "maintainDate": "2024-05-03",
+    "qtySum": 27375,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55196 4859R",
+    "maintainDate": "2025-08-15",
+    "qtySum": 27303,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55318 9LH0A",
+    "maintainDate": "2025-10-16",
+    "qtySum": 27024,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55197 5696R",
+    "maintainDate": "2025-08-15",
+    "qtySum": 26931,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "544H2 5RA0A",
+    "maintainDate": "2025-07-15",
+    "qtySum": 26578,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "544H3 5RA0A",
+    "maintainDate": "2025-07-15",
+    "qtySum": 26270,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54401 U612AY",
+    "maintainDate": "2026-01-15",
+    "qtySum": 26257,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54401 U613AY",
+    "maintainDate": "2026-01-15",
+    "qtySum": 26257,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54408 5471R",
+    "maintainDate": "2025-09-02",
+    "qtySum": 26198,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54409 1884R",
+    "maintainDate": "2025-09-02",
+    "qtySum": 26198,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54528 7LR2A",
+    "maintainDate": "2024-05-03",
+    "qtySum": 25915,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54529 7LR2A",
+    "maintainDate": "2024-05-03",
+    "qtySum": 25915,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54529 7LR1A",
+    "maintainDate": "2024-05-10",
+    "qtySum": 25623,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55511 U598AY",
+    "maintainDate": "2026-01-13",
+    "qtySum": 25350,
+    "qtySumReal": 78688,
+    "nMinus1": 18876,
+    "n": 19296,
+    "nPlus1": 31020
+  },
+  {
+    "item": "55511 U597AY",
+    "maintainDate": "2026-01-13",
+    "qtySum": 25045,
+    "qtySumReal": 78880,
+    "nMinus1": 18876,
+    "n": 19296,
+    "nPlus1": 31020
+  },
+  {
+    "item": "43035 7LR0A",
+    "maintainDate": "2024-05-02",
+    "qtySum": 24932,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "43034 7LR0A",
+    "maintainDate": "2024-05-02",
+    "qtySum": 24813,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "555G3 3142R",
+    "maintainDate": "2025-03-18",
+    "qtySum": 24746,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "544H3 7LR1A",
+    "maintainDate": "2024-05-31",
+    "qtySum": 24708,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "50200-3M6-M01 68",
+    "maintainDate": "2025-12-30",
+    "qtySum": 24645,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "50200-3M6-M01 69",
+    "maintainDate": "2025-12-30",
+    "qtySum": 24645,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55411 3665RAY",
+    "maintainDate": "2025-07-10",
+    "qtySum": 24320,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "50200-TRY-0030-30",
+    "maintainDate": "2026-01-07",
+    "qtySum": 24040,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "50200-TRY-0030-31",
+    "maintainDate": "2026-01-07",
+    "qtySum": 24040,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "544K6 7LR0A",
+    "maintainDate": "2024-06-03",
+    "qtySum": 24031,
+    "qtySumReal": 38738,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "544K8 7LR0A",
+    "maintainDate": "2024-06-03",
+    "qtySum": 23938,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "544K9 7LR0A",
+    "maintainDate": "2024-06-03",
+    "qtySum": 23938,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "50200-TRY-M010-28",
+    "maintainDate": "2025-09-12",
+    "qtySum": 23625,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "555G2 8894R",
+    "maintainDate": "2025-03-18",
+    "qtySum": 23594,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "17205 4625R",
+    "maintainDate": "2025-09-23",
+    "qtySum": 23504,
+    "qtySumReal": null,
+    "nMinus1": 9500,
+    "n": 6660,
+    "nPlus1": 8940
+  },
+  {
+    "item": "46262 4406R",
+    "maintainDate": "2023-07-25",
+    "qtySum": 22915,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54497 7LR1A",
+    "maintainDate": "2024-06-03",
+    "qtySum": 22894,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54498 7LR1A",
+    "maintainDate": "2024-06-03",
+    "qtySum": 22894,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55511 Y865AY",
+    "maintainDate": "2026-03-19",
+    "qtySum": 22414,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "544B4 5RA0A",
+    "maintainDate": "2025-07-07",
+    "qtySum": 22387,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55511 Y862AY",
+    "maintainDate": "2025-10-23",
+    "qtySum": 22333,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55511 Y162AY",
+    "maintainDate": "2025-10-30",
+    "qtySum": 22330,
+    "qtySumReal": 70230,
+    "nMinus1": 11070,
+    "n": 11280,
+    "nPlus1": 10650
+  },
+  {
+    "item": "544H5 7LR0A",
+    "maintainDate": "2024-05-30",
+    "qtySum": 22301,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "6040 110 049 F",
+    "maintainDate": "2025-08-15",
+    "qtySum": 22148,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "6040 110 049 R",
+    "maintainDate": "2025-08-15",
+    "qtySum": 22148,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "43032 7LR0A",
+    "maintainDate": "2024-06-03",
+    "qtySum": 22069,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "43033 7LR0A",
+    "maintainDate": "2024-06-03",
+    "qtySum": 22069,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54408 7LR1A",
+    "maintainDate": "2024-06-03",
+    "qtySum": 22032,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54409 7LR1A",
+    "maintainDate": "2024-05-31",
+    "qtySum": 22032,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55507 5RA0B",
+    "maintainDate": "2025-08-15",
+    "qtySum": 22007,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "20722 5RA0C",
+    "maintainDate": "2025-10-06",
+    "qtySum": 21800,
+    "qtySumReal": null,
+    "nMinus1": 5160,
+    "n": 3740,
+    "nPlus1": 3040
+  },
+  {
+    "item": "20722 5RA0D",
+    "maintainDate": "2025-10-06",
+    "qtySum": 21800,
+    "qtySumReal": null,
+    "nMinus1": 5160,
+    "n": 3740,
+    "nPlus1": 3040
+  },
+  {
+    "item": "544B4 7LR0A",
+    "maintainDate": "2024-06-14",
+    "qtySum": 21796,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54440 7LR1A",
+    "maintainDate": "2024-06-04",
+    "qtySum": 21785,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54441 7LR1A",
+    "maintainDate": "2024-06-04",
+    "qtySum": 21785,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55511 W815AY",
+    "maintainDate": "2026-03-06",
+    "qtySum": 21783,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55511 W816AY",
+    "maintainDate": "2026-03-06",
+    "qtySum": 21783,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54528 7LR0A",
+    "maintainDate": "2024-05-10",
+    "qtySum": 21748,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "544H4 7LR0A",
+    "maintainDate": "2024-05-30",
+    "qtySum": 21700,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54036 9LH0BE",
+    "maintainDate": "2025-12-30",
+    "qtySum": 21647,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54505 7LR0A TF",
+    "maintainDate": "2024-05-10",
+    "qtySum": 21639,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54504 7LR0A TF",
+    "maintainDate": "2024-05-10",
+    "qtySum": 21231,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54414 7LR1A",
+    "maintainDate": "2024-06-04",
+    "qtySum": 21082,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54415 7LR1A",
+    "maintainDate": "2024-06-04",
+    "qtySum": 21082,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "50200-3M6-M01 70",
+    "maintainDate": "2025-08-26",
+    "qtySum": 20947,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54411 7LR0A",
+    "maintainDate": "2024-05-10",
+    "qtySum": 20744,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55516 7324R",
+    "maintainDate": "2025-08-26",
+    "qtySum": 20414,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54410 7LR0A",
+    "maintainDate": "2024-05-10",
+    "qtySum": 20363,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "36554 7LR0A",
+    "maintainDate": "2025-12-22",
+    "qtySum": 20223,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "36555 7LR0A",
+    "maintainDate": "2025-12-22",
+    "qtySum": 20223,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54529 7LR0A",
+    "maintainDate": "2024-05-10",
+    "qtySum": 20058,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "555G2 9068R",
+    "maintainDate": "2024-10-08",
+    "qtySum": 19840,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "555G3 9804R",
+    "maintainDate": "2024-10-08",
+    "qtySum": 19840,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55593 0970R",
+    "maintainDate": "2023-08-26",
+    "qtySum": 19278,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55406 3665RAY",
+    "maintainDate": "2023-04-04",
+    "qtySum": 19216,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "50200-3M6-M01 21",
+    "maintainDate": "2025-07-11",
+    "qtySum": 19154,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "6040 100 827",
+    "maintainDate": "2025-11-07",
+    "qtySum": 18688,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55445-1-3665RAY",
+    "maintainDate": "2023-03-16",
+    "qtySum": 18293,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "544H4 5RA0A",
+    "maintainDate": "2025-09-12",
+    "qtySum": 17659,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54409 9039R",
+    "maintainDate": "2024-10-11",
+    "qtySum": 17438,
+    "qtySumReal": 36380,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "6040 100 898",
+    "maintainDate": "2024-03-25",
+    "qtySum": 17273,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55497-1-3665RAY",
+    "maintainDate": "2023-04-18",
+    "qtySum": 17156,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55508 5RA0A",
+    "maintainDate": "2026-01-08",
+    "qtySum": 17154,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55592 7027R",
+    "maintainDate": "2023-08-26",
+    "qtySum": 17127,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "544H5 5RA0A",
+    "maintainDate": "2025-09-12",
+    "qtySum": 17115,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55444-2-3665RAY",
+    "maintainDate": "2023-05-03",
+    "qtySum": 16720,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55445-2-3665RAY",
+    "maintainDate": "2023-04-10",
+    "qtySum": 16720,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55444-1-3665RAY",
+    "maintainDate": "2023-05-10",
+    "qtySum": 16533,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55405 3665RAY",
+    "maintainDate": "2023-04-04",
+    "qtySum": 16016,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54504 5RA0A",
+    "maintainDate": "2026-01-21",
+    "qtySum": 15860,
+    "qtySumReal": 15860,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "6040 100 824",
+    "maintainDate": "2025-11-13",
+    "qtySum": 15728,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55497-2-3665RAY",
+    "maintainDate": "2023-06-12",
+    "qtySum": 15649,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "36554 9LH0A",
+    "maintainDate": "2025-12-22",
+    "qtySum": 15243,
+    "qtySumReal": null,
+    "nMinus1": 6220,
+    "n": 6080,
+    "nPlus1": 4640
+  },
+  {
+    "item": "36555 9LH0A",
+    "maintainDate": "2025-12-22",
+    "qtySum": 15243,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55593 4309R",
+    "maintainDate": "2023-08-25",
+    "qtySum": 15196,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "6040 191 719",
+    "maintainDate": "2023-05-08",
+    "qtySum": 14568,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54505 5RA0A",
+    "maintainDate": "2026-01-28",
+    "qtySum": 14349,
+    "qtySumReal": 14349,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "6040 100 800",
+    "maintainDate": "2024-03-28",
+    "qtySum": 14307,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "6040 100 366",
+    "maintainDate": "2023-05-23",
+    "qtySum": 14180,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55592 2874R",
+    "maintainDate": "2023-08-25",
+    "qtySum": 13967,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54851 5RA0A",
+    "maintainDate": "2025-10-01",
+    "qtySum": 13869,
+    "qtySumReal": 33502,
+    "nMinus1": 5160,
+    "n": 3740,
+    "nPlus1": 3040
+  },
+  {
+    "item": "54464 5RA0A",
+    "maintainDate": "2025-11-20",
+    "qtySum": 13732,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54465 5RA0A",
+    "maintainDate": "2025-11-20",
+    "qtySum": 13732,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "6040 191 717",
+    "maintainDate": "2023-09-11",
+    "qtySum": 13705,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "6040 191 837",
+    "maintainDate": "2023-09-11",
+    "qtySum": 13705,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55517 0906R",
+    "maintainDate": "2023-07-25",
+    "qtySum": 13592,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55518 4132R",
+    "maintainDate": "2023-07-25",
+    "qtySum": 13592,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "50200-TRY-0030-27",
+    "maintainDate": "2025-10-13",
+    "qtySum": 13553,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55508 5RA0B",
+    "maintainDate": "2026-02-06",
+    "qtySum": 13487,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55057 5RA0A",
+    "maintainDate": "2025-10-06",
+    "qtySum": 13345,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "6040 191 967",
+    "maintainDate": "2023-08-09",
+    "qtySum": 13279,
+    "qtySumReal": 64965,
+    "nMinus1": 1700,
+    "n": 1000,
+    "nPlus1": 1300
+  },
+  {
+    "item": "54401 W953AY",
+    "maintainDate": "2026-03-10",
+    "qtySum": 13121,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54401 W954AY",
+    "maintainDate": "2026-03-10",
+    "qtySum": 13121,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "6040 191 716",
+    "maintainDate": "2023-08-09",
+    "qtySum": 13108,
+    "qtySumReal": 64965,
+    "nMinus1": 1700,
+    "n": 1000,
+    "nPlus1": 1300
+  },
+  {
+    "item": "50200-3M6-M01 54",
+    "maintainDate": "2025-09-18",
+    "qtySum": 12976,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "50200-TRY-M010-21",
+    "maintainDate": "2025-10-17",
+    "qtySum": 12724,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "6040 100 796",
+    "maintainDate": "2024-01-22",
+    "qtySum": 12394,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54497 7LR1B",
+    "maintainDate": "2024-06-04",
+    "qtySum": 11804,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55511 5RA0B",
+    "maintainDate": "2026-02-26",
+    "qtySum": 11367,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54401 U611AY",
+    "maintainDate": "2026-03-23",
+    "qtySum": 11264,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55511 U602AY",
+    "maintainDate": "2026-04-06",
+    "qtySum": 11065,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55511 U603AY",
+    "maintainDate": "2026-04-06",
+    "qtySum": 11065,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "51351-T7W-G000-20",
+    "maintainDate": "2026-02-12",
+    "qtySum": 10967,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "51351-T7W-G000-20 TF",
+    "maintainDate": "2026-02-12",
+    "qtySum": 10910,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55114 5JL0A",
+    "maintainDate": "2024-11-12",
+    "qtySum": 10280,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54482 1534R",
+    "maintainDate": "2025-10-07",
+    "qtySum": 10124,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54483 0701R",
+    "maintainDate": "2025-10-07",
+    "qtySum": 10124,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55537 7LR0A",
+    "maintainDate": "2025-11-04",
+    "qtySum": 10075,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "51021 8578R",
+    "maintainDate": "2024-10-09",
+    "qtySum": 9568,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "50200-TRY-M010-29",
+    "maintainDate": "2025-11-13",
+    "qtySum": 9463,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "51092 2354R",
+    "maintainDate": "2024-10-08",
+    "qtySum": 9404,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "555B1 3425R",
+    "maintainDate": "2025-12-08",
+    "qtySum": 9403,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54401 U610AY",
+    "maintainDate": "2025-12-01",
+    "qtySum": 9139,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "50200-3M6-M01 63",
+    "maintainDate": "2026-04-08",
+    "qtySum": 8664,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "50200-3M6-M01 64",
+    "maintainDate": "2026-04-08",
+    "qtySum": 8664,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "544H4 4530R",
+    "maintainDate": "2026-03-06",
+    "qtySum": 8179,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55592 4333R",
+    "maintainDate": "2024-10-09",
+    "qtySum": 8120,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55593 9621R",
+    "maintainDate": "2024-10-09",
+    "qtySum": 8120,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "6040 100 905",
+    "maintainDate": "2025-04-28",
+    "qtySum": 7952,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "6040 100 906",
+    "maintainDate": "2025-04-28",
+    "qtySum": 7952,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "544H5 2994R",
+    "maintainDate": "2026-03-10",
+    "qtySum": 7716,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54408 3694R",
+    "maintainDate": "2026-03-30",
+    "qtySum": 7589,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55082 8754R",
+    "maintainDate": "2025-10-30",
+    "qtySum": 7412,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "544H3 2357R",
+    "maintainDate": "2024-10-08",
+    "qtySum": 7365,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55110 9189R TF",
+    "maintainDate": "2026-04-03",
+    "qtySum": 7282,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "6040 192 089",
+    "maintainDate": "2023-10-06",
+    "qtySum": 7240,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "51351-T7W-G000-25",
+    "maintainDate": "2026-03-24",
+    "qtySum": 7141,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "6040 191 718 R",
+    "maintainDate": "2023-04-26",
+    "qtySum": 7093,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55111 9671R TF",
+    "maintainDate": "2026-04-06",
+    "qtySum": 7093,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "6040 191 718 F",
+    "maintainDate": "2023-04-26",
+    "qtySum": 7063,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "51361-T7W-G000-25",
+    "maintainDate": "2026-03-24",
+    "qtySum": 6928,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54085 9LH0B",
+    "maintainDate": "2026-03-30",
+    "qtySum": 6916,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "51361-T7W-G000-20 TF",
+    "maintainDate": "2026-03-16",
+    "qtySum": 6773,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "51361-T7W-G000-20",
+    "maintainDate": "2026-03-19",
+    "qtySum": 6773,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55592 7LR0A",
+    "maintainDate": "2026-04-30",
+    "qtySum": 6355,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55593 7LR0A",
+    "maintainDate": "2026-04-30",
+    "qtySum": 6355,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54504 5204R TF",
+    "maintainDate": "2025-11-20",
+    "qtySum": 6250,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55110 9189R",
+    "maintainDate": "2026-04-02",
+    "qtySum": 5817,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55518 9931R",
+    "maintainDate": "2025-09-04",
+    "qtySum": 5698,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55111 9671R",
+    "maintainDate": "2026-04-13",
+    "qtySum": 5480,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54529 5JL0A",
+    "maintainDate": "2023-04-20",
+    "qtySum": 5467,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55516 7082R",
+    "maintainDate": "2026-01-28",
+    "qtySum": 5264,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54592 5JL0A",
+    "maintainDate": "2023-09-18",
+    "qtySum": 5260,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54593 5JL0A",
+    "maintainDate": "2023-09-18",
+    "qtySum": 5260,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55511 U600AY",
+    "maintainDate": "2025-12-15",
+    "qtySum": 5135,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55511 U599AY",
+    "maintainDate": "2025-12-15",
+    "qtySum": 5127,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "50200-TRY-0030-68",
+    "maintainDate": "2025-10-30",
+    "qtySum": 4643,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "50200-TRY-0030-69",
+    "maintainDate": "2025-10-30",
+    "qtySum": 4643,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54851 3470R",
+    "maintainDate": "2026-02-05",
+    "qtySum": 4604,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54505 7390R TF",
+    "maintainDate": "2025-11-25",
+    "qtySum": 4588,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54414 4154R",
+    "maintainDate": "2026-01-21",
+    "qtySum": 4513,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54415 1475R",
+    "maintainDate": "2026-01-21",
+    "qtySum": 4513,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "56117 5JL0B",
+    "maintainDate": "2023-05-16",
+    "qtySum": 4378,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "56118 5JL0B",
+    "maintainDate": "2023-05-16",
+    "qtySum": 4377,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "544H3 6010R",
+    "maintainDate": "2026-02-25",
+    "qtySum": 3983,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54414 5RA0A",
+    "maintainDate": "2024-07-19",
+    "qtySum": 3950,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55511 V629AY",
+    "maintainDate": "2025-12-10",
+    "qtySum": 3940,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54504 5204R",
+    "maintainDate": "2025-11-21",
+    "qtySum": 3831,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "544H6 6217R",
+    "maintainDate": "2026-02-18",
+    "qtySum": 3825,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54528 5JL0A",
+    "maintainDate": "2023-03-20",
+    "qtySum": 3761,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54654 5JL0A",
+    "maintainDate": "2024-04-22",
+    "qtySum": 3448,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54655 5JL0A",
+    "maintainDate": "2024-04-22",
+    "qtySum": 3448,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54594 5JL0A",
+    "maintainDate": "2023-05-15",
+    "qtySum": 3341,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54595 5JL0A",
+    "maintainDate": "2023-09-14",
+    "qtySum": 3341,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54505 7390R",
+    "maintainDate": "2025-11-27",
+    "qtySum": 3241,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54513 5JL0A",
+    "maintainDate": "2023-12-12",
+    "qtySum": 2498,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54512 5JL0A",
+    "maintainDate": "2023-12-12",
+    "qtySum": 2458,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54851 9LH0C",
+    "maintainDate": "2025-11-26",
+    "qtySum": 2359,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "50200-TRY-0030-26",
+    "maintainDate": "2025-12-22",
+    "qtySum": 2187,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54403 5RA0A",
+    "maintainDate": "2026-04-13",
+    "qtySum": 1607,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "11284 0666R",
+    "maintainDate": "2025-12-15",
+    "qtySum": 1378,
+    "qtySumReal": null,
+    "nMinus1": 4800,
+    "n": 3200,
+    "nPlus1": 6800
+  },
+  {
+    "item": "54512 5RA0A",
+    "maintainDate": "2025-12-22",
+    "qtySum": 1140,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "544H2 6094R",
+    "maintainDate": "2026-04-22",
+    "qtySum": 901,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54505 9LH0A",
+    "maintainDate": "2023-06-02",
+    "qtySum": 768,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54504 9LH0A",
+    "maintainDate": "2023-06-05",
+    "qtySum": 737,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55535 5RA0A",
+    "maintainDate": "2025-12-18",
+    "qtySum": 737,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55536 5RA0A",
+    "maintainDate": "2025-12-18",
+    "qtySum": 737,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55511 U596AY",
+    "maintainDate": "2022-04-08",
+    "qtySum": 150,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54513 5RA0A",
+    "maintainDate": "2025-12-22",
+    "qtySum": 100,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54850 2411R",
+    "maintainDate": "2026-04-20",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55318 5RA0A",
+    "maintainDate": "2025-11-06",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55318 7LR0B",
+    "maintainDate": "2026-03-27",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55319 5RA0A",
+    "maintainDate": "2025-11-06",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55319 7LR0B",
+    "maintainDate": "2026-03-27",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55517 5RA0A",
+    "maintainDate": "2025-11-24",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55518 5RA0A",
+    "maintainDate": "2025-11-24",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "43032 9LH0B",
+    "maintainDate": "2020-02-18",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "43033 9LH0B",
+    "maintainDate": "2020-02-17",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "43034 9LH0B",
+    "maintainDate": "2021-04-16",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "43035 9LH0B",
+    "maintainDate": "2021-04-16",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "50200-TRY-M010-54",
+    "maintainDate": "2021-12-03",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "50200-TRY-M010-55",
+    "maintainDate": "2021-12-03",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "50200-TRY-M010-56",
+    "maintainDate": "2018-12-18",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54401 U649AY",
+    "maintainDate": "2023-04-12",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54401 U650AY",
+    "maintainDate": "2022-12-22",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54403 9LH0B",
+    "maintainDate": "2023-09-08",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54532 5JL0A",
+    "maintainDate": "2024-02-16",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54850 9LH0C",
+    "maintainDate": "2021-12-14",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55056 9LH0A",
+    "maintainDate": "2020-03-09",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55057 9LH0A",
+    "maintainDate": "2020-03-09",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "551B6 5JL0A",
+    "maintainDate": "2024-01-29",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55314 9LH0A",
+    "maintainDate": "2020-10-30",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55315 9LH0A",
+    "maintainDate": "2020-10-30",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55318 6KL0A",
+    "maintainDate": "2024-12-03",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55507 9LH0B",
+    "maintainDate": "2020-02-13",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55507 9LH0B TF",
+    "maintainDate": "2021-04-27",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55508 9LH0B",
+    "maintainDate": "2020-02-13",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55511 9LH0A",
+    "maintainDate": "2019-12-13",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55511 U996AY",
+    "maintainDate": "2021-04-16",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55511 U997AY",
+    "maintainDate": "2021-04-16",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55517 9LH0A",
+    "maintainDate": "2024-04-15",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55517 9LH0B",
+    "maintainDate": "2024-04-15",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55517 9LH1B",
+    "maintainDate": "2024-04-15",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55518 9LH0A",
+    "maintainDate": "2018-11-27",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55518 9LH0B",
+    "maintainDate": "2019-11-13",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "55518 9LH1B",
+    "maintainDate": "2020-07-10",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "6040 191 718",
+    "maintainDate": "2023-04-26",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54504 7LR0A",
+    "maintainDate": "2024-05-10",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  },
+  {
+    "item": "54505 7LR0A",
+    "maintainDate": "2024-05-10",
+    "qtySum": null,
+    "qtySumReal": null,
+    "nMinus1": 0,
+    "n": 0,
+    "nPlus1": 0
+  }
+]

@@ -132,8 +132,9 @@ describe("Controle 50K projection", () => {
     assert.equal(projection.lastMaintenanceDate, "2026-05-10T12:00:00.000Z");
     assert.equal(projection.estimatedStrokes, 1613);
     assert.equal(projection.forecastedStrokes, 20000);
-    assert.equal(projection.totalProjectedStrokes, 21613);
-    assert.equal(projection.remainingStrokes, 28387);
+    // Projeção = acúmulo até hoje (1613) + o que falta do mês (1935) + meses futuros (15000).
+    assert.equal(projection.totalProjectedStrokes, 18548);
+    assert.equal(projection.remainingStrokes, 31452);
     assert.equal(projection.status, "OK");
   });
 
@@ -159,8 +160,8 @@ describe("Controle 50K projection", () => {
       hasMaintenanceInReferenceMonth: false,
       estimatedStrokes: 2100,
       forecastedStrokes: 18000,
-      totalProjectedStrokes: 20100,
-      remainingStrokes: 29900,
+      totalProjectedStrokes: 19200,
+      remainingStrokes: 30800,
       status: "OK",
       reachesLimitInMonth: undefined,
       window: [
@@ -233,10 +234,11 @@ describe("Controle 50K projection", () => {
     assert.equal(projection.estimatedStrokes, 8000);
     assert.equal(projection.hasMaintenanceInReferenceMonth, true);
     assert.equal(projection.forecastedStrokes, 15500);
-    assert.equal(projection.currentMonthRemainingStrokes, 8500);
-    // Falta produzir no mês = restante do mês (8500) menos o já decorrido desde a manutenção (8000).
+    // Falta produzir no mês = previsão do mês (15500) menos o já decorrido desde o dia 1 (15000).
+    assert.equal(projection.currentMonthRemainingStrokes, 500);
     assert.equal(projection.currentMonthRemainingToDo, 500);
-    assert.equal(projection.totalProjectedStrokes, 16500);
+    // Projeção = acúmulo até hoje (8000) + o que falta do mês (500) + futuros (0).
+    assert.equal(projection.totalProjectedStrokes, 8500);
   });
 
   it("leaves real-cycle fields null when there is no stroke reading", () => {
@@ -320,6 +322,34 @@ describe("Controle 50K projection", () => {
     assert.equal(projection.realEstimatedStrokes, 47000);
     assert.equal(projection.realRemainingStrokes, 3000);
     assert.equal(projection.realStatus, "PROGRAMAR_PREVENTIVA"); // >= warningLimit (45000)
+  });
+
+  it("does not mark VENCIDO from the projection alone — only programs the preventive", () => {
+    const projection = getToolProjection(
+      makeTool({
+        currentStrokes: 30000, // acúmulo atual longe do limite
+        forecasts: [
+          forecast(2026, 5, 12000),
+          forecast(2026, 6, 12000),
+          forecast(2026, 7, 12000),
+          forecast(2026, 8, 12000),
+        ],
+      }),
+      monthDate(2026, 5, 20),
+    );
+
+    assert.equal(projection.estimatedStrokes, 30000);
+    assert.ok(projection.totalProjectedStrokes >= 50000); // a projeção estoura o limite
+    assert.equal(projection.status, "PROGRAMAR_PREVENTIVA"); // mas NÃO aparece como vencido
+  });
+
+  it("marks VENCIDO only when the current accumulation already reached the limit", () => {
+    const projection = getToolProjection(
+      makeTool({ currentStrokes: 51000 }),
+      monthDate(2026, 5, 20),
+    );
+
+    assert.equal(projection.status, "VENCIDO");
   });
 
   it("reports a registration error and zeroes calculated strokes for invalid shotsPerStroke", () => {

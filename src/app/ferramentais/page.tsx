@@ -4,7 +4,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { Pagination } from "@/components/ui/Pagination";
-import { getMaintenanceStatus } from "@/lib/calculations/strokes";
+import { getAllToolsProjection } from "@/lib/calculations/strokes";
 import { formatNumber } from "@/lib/utils";
 import Link from "next/link";
 import { ToolActions } from "./ToolActions";
@@ -33,9 +33,31 @@ export default async function FerramentaisPage({
       }
     : {};
 
+  // Relações necessárias para calcular o acúmulo/status igual ao Controle 50K.
+  const toolInclude = {
+    bomItems: {
+      include: {
+        product: {
+          include: {
+            forecasts: true,
+            projectProducts: { include: { project: { include: { forecasts: true } } } },
+          },
+        },
+      },
+    },
+    maintenanceRecords: {
+      where: { resetCounter: true },
+      orderBy: { maintenanceDate: "desc" as const },
+      take: 1,
+    },
+    monthlySnapshots: { orderBy: { referenceMonth: "asc" as const } },
+    strokeReadings: { orderBy: { readingDate: "desc" as const } },
+  } as const;
+
   const [tools, total] = await Promise.all([
     prisma.tool.findMany({
       where,
+      include: toolInclude,
       orderBy: { code: "asc" },
       skip: (currentPage - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
@@ -44,6 +66,9 @@ export default async function FerramentaisPage({
   ]);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
+
+  // Acúmulo e status calculados (real quando há leitura; senão estimado) — atualiza sozinho.
+  const projById = new Map(getAllToolsProjection(tools).map((p) => [p.toolId, p]));
 
   function buildPageUrl(p: number) {
     const params = new URLSearchParams();
@@ -67,7 +92,7 @@ export default async function FerramentaisPage({
       <SearchInput
         basePath="/ferramentais"
         initialValue={searchTerm}
-        placeholder="Buscar por código, prensa, linha ou descrição…"
+        placeholder="Buscar por código ou descrição…"
         total={total}
         label={total === 1 ? "ferramental" : "ferramentais"}
       />
@@ -86,9 +111,9 @@ export default async function FerramentaisPage({
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descrição</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Prensa</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Linha</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Shot</th>
+                  {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Prensa</th> */}
+                  {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Linha</th> */}
+                  {/* <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Shot</th> */}
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Batidas Atuais</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Limite Prev.</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -98,15 +123,17 @@ export default async function FerramentaisPage({
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {tools.map((tool) => {
-                  const status = getMaintenanceStatus(tool.currentStrokes, 0, tool.preventiveLimit, tool.warningLimit, tool.shotsPerStroke);
+                  const proj = projById.get(tool.id);
+                  const accumulated = proj ? (proj.realEstimatedStrokes ?? proj.estimatedStrokes) : tool.currentStrokes;
+                  const status = proj?.status ?? "OK";
                   return (
                     <tr key={tool.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 font-medium text-gray-900">{tool.code}</td>
                       <td className="px-6 py-4 text-gray-600">{tool.description ?? "—"}</td>
-                      <td className="px-6 py-4 text-gray-600">{tool.press}</td>
-                      <td className="px-6 py-4 text-gray-600">{tool.line ?? "—"}</td>
-                      <td className="px-6 py-4 text-right tabular-nums">{formatNumber(tool.shotsPerStroke)}</td>
-                      <td className="px-6 py-4 text-right tabular-nums">{formatNumber(tool.currentStrokes)}</td>
+                      {/* <td className="px-6 py-4 text-gray-600">{tool.press}</td> */}
+                      {/* <td className="px-6 py-4 text-gray-600">{tool.line ?? "—"}</td> */}
+                      {/* <td className="px-6 py-4 text-right tabular-nums">{formatNumber(tool.shotsPerStroke)}</td> */}
+                      <td className="px-6 py-4 text-right tabular-nums">{formatNumber(Math.round(accumulated))}</td>
                       <td className="px-6 py-4 text-right tabular-nums">{formatNumber(tool.preventiveLimit)}</td>
                       <td className="px-6 py-4"><StatusBadge status={status} /></td>
                       <td className="px-6 py-4">

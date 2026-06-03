@@ -1,6 +1,9 @@
 @import "tailwindcss";
 
 :root {
+  /* App desenhado apenas para tema claro — não seguir o modo escuro do SO,
+     senão textos sem cor explícita ficam brancos sobre fundos claros fixos. */
+  color-scheme: light;
   --background: #ffffff;
   --foreground: #171717;
 }
@@ -12,15 +15,17 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Esconde a barra de scroll mantendo a rolagem funcional (usado na navbar). */
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE e Edge antigo */
+  scrollbar-width: none; /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Edge */
 }
