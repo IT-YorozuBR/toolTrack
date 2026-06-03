@@ -37,7 +37,7 @@ export function Controle50KFilters({ presses, availableMonths }: Props) {
         <option value="ERRO_CADASTRO">Erro de Cadastro</option>
       </select>
 
-      <select
+      {/* <select
         value={searchParams.get("press") ?? ""}
         onChange={(e) => updateFilter("press", e.target.value)}
         className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -46,7 +46,7 @@ export function Controle50KFilters({ presses, availableMonths }: Props) {
         {presses.map((p) => (
           <option key={p} value={p}>{p}</option>
         ))}
-      </select>
+      </select> */}
 
       <select
         value={searchParams.get("reachesMonth") ?? ""}
@@ -59,7 +59,7 @@ export function Controle50KFilters({ presses, availableMonths }: Props) {
         ))}
       </select>
 
-      <div className="flex items-center gap-2">
+      {/* <div className="flex items-center gap-2">
         <span className="text-sm text-gray-500 whitespace-nowrap">Batidas ≥</span>
         <input
           type="number"
@@ -73,7 +73,7 @@ export function Controle50KFilters({ presses, availableMonths }: Props) {
           onBlur={(e) => updateFilter("minStrokes", e.target.value)}
           className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-32"
         />
-      </div>
+      </div> */}
 
       <input
         type="text"

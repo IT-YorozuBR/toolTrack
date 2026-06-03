@@ -12,6 +12,7 @@ const navItems = [
   { href: "/bom", label: "BOM", emoji: "" },
   { href: "/volumes", label: "Volumes Previstos", emoji: "" },
   { href: "/manutencoes", label: "Manutenções", emoji: "" },
+  { href: "/leituras", label: "Leituras de Batidas", emoji: "" },
   { href: "/historico-demanda", label: "Histórico Demanda", emoji: "" },
   { href: "/fechamento-mensal", label: "Fechamento Mensal", emoji: "" },
 ];

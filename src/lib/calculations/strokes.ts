@@ -34,9 +34,15 @@ export type ToolProjection = {
   closedHistoricalStrokes: number;
   currentMonthForecastedStrokes: number;
   currentMonthRemainingStrokes: number;
+  currentMonthRemainingToDo: number;
   forecastedStrokesAfterMaintenance: number;
   totalProjectedStrokes: number;
   remainingStrokes: number;
+  latestRealReadingDate: string | null;
+  realCycleStrokes: number | null;
+  realEstimatedStrokes: number | null;
+  realRemainingStrokes: number | null;
+  realStatus: MaintenanceStatus | null;
   preventiveLimit: number;
   warningLimit: number;
   status: MaintenanceStatus;
@@ -80,6 +86,11 @@ type MonthlySnapshotForProjection = {
   cycleStartedAt?: Date | null;
 };
 
+type StrokeReadingForProjection = {
+  readingDate: Date;
+  cycleStrokes: number;
+};
+
 type ToolWithRelations = {
   id: string;
   code: string;
@@ -93,6 +104,7 @@ type ToolWithRelations = {
   bomItems: BomItemWithProduct[];
   maintenanceRecords: MaintenanceRecordForProjection[];
   monthlySnapshots?: MonthlySnapshotForProjection[];
+  strokeReadings?: StrokeReadingForProjection[];
 };
 
 const PT_MONTHS = [
@@ -278,6 +290,32 @@ function getLastReset(tool: ToolWithRelations): MaintenanceRecordForProjection |
     .sort((a, b) => b.maintenanceDate.getTime() - a.maintenanceDate.getTime())[0];
 }
 
+// Saldo 50K real: ancora na última leitura do contador do ciclo e cresce pela
+// estimativa diária (calculateEstimatedStrokes) entre a leitura e hoje. Leituras
+// anteriores ao último reset (manutenção) são ignoradas — pertencem a outro ciclo.
+function getRealCycleEstimate(
+  tool: ToolWithRelations,
+  lastReset: MaintenanceRecordForProjection | undefined,
+  today: Date,
+): { reading: StrokeReadingForProjection; estimated: number } | null {
+  if (!tool.strokeReadings?.length) return null;
+  if (!tool.shotsPerStroke || tool.shotsPerStroke <= 0 || !isFinite(tool.shotsPerStroke)) return null;
+
+  const cycleStart = lastReset?.maintenanceDate ?? null;
+  // Comparar por dia de calendário: leituras gravadas ao meio-dia de hoje não podem
+  // ser descartadas só porque o instante atual ainda é de manhã.
+  const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+  const reading = tool.strokeReadings
+    .map((r) => ({ ...r, readingDate: new Date(r.readingDate) }))
+    .filter((r) => r.readingDate <= todayEnd && (!cycleStart || r.readingDate >= cycleStart))
+    .sort((a, b) => b.readingDate.getTime() - a.readingDate.getTime())[0];
+
+  if (!reading) return null;
+
+  const growth = calculateEstimatedStrokes(reading.readingDate, tool, today);
+  return { reading, estimated: reading.cycleStrokes + growth };
+}
+
 function getClosedHistoricalStrokes(
   tool: ToolWithRelations,
   lastReset: MaintenanceRecordForProjection | undefined,
@@ -398,6 +436,11 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
     currentMonthForecastedStrokes,
     today,
   );
+  // O que ainda falta produzir no mês corrente: previsão do mês menos o que já decorreu até hoje.
+  const currentMonthRemainingToDo = Math.max(
+    0,
+    Math.round(currentMonthRemainingStrokes - currentMonthElapsedStrokes),
+  );
   const forecastedStrokesAfterMaintenance = getForecastedStrokesAfterMaintenance(
     window,
     currentMonthRemainingStrokes,
@@ -414,18 +457,29 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
     estimatedStrokes = calculateEstimatedStrokes(startOfMonth(today), tool, today);
   }
 
-  // Portion of the current month not yet captured by estimatedStrokes (avoids double-counting in limit forecast).
-  const currentMonthTrueRemaining = lastReset
-    ? Math.max(0, currentMonthRemainingStrokes - currentMonthElapsedStrokes)
-    : currentMonthRemainingStrokes;
+  const realCycle = getRealCycleEstimate(tool, lastReset, today);
+  const realCycleStrokes = realCycle?.reading.cycleStrokes ?? null;
+  const realEstimatedStrokes = realCycle?.estimated ?? null;
+  const latestRealReadingDate = realCycle ? realCycle.reading.readingDate.toISOString() : null;
+  const realRemainingStrokes = realEstimatedStrokes !== null ? tool.preventiveLimit - realEstimatedStrokes : null;
+
+  // Havendo leitura real do ciclo, a projeção (Saldo 50k Estimado e mês que atinge o limite) é
+  // ancorada no acúmulo real em vez das batidas estimadas. Sem leitura, usa o estimado.
+  const hasRealReading = realEstimatedStrokes !== null;
+  const projectionBaseStrokes = realEstimatedStrokes ?? estimatedStrokes;
 
   const totalProjectedStrokes = lastReset
-    ? estimatedStrokes + forecastedStrokesAfterMaintenance
-    : estimatedStrokes + forecastedStrokes;
+    ? projectionBaseStrokes + forecastedStrokesAfterMaintenance
+    : projectionBaseStrokes + forecastedStrokes;
   const remainingStrokes = tool.preventiveLimit - totalProjectedStrokes;
+
   const status = getMaintenanceStatus(0, totalProjectedStrokes, tool.preventiveLimit, tool.warningLimit, tool.shotsPerStroke);
-  const reachesLimitInMonth = lastReset
-    ? getMonthWhenReachesLimitFromCycle(tool, estimatedStrokes, currentMonthTrueRemaining, referenceDate)
+  // Status real: mesmos limiares, porém aplicados só ao acúmulo real (estado atual). Null sem leitura.
+  const realStatus = realEstimatedStrokes !== null
+    ? getMaintenanceStatus(0, realEstimatedStrokes, tool.preventiveLimit, tool.warningLimit, tool.shotsPerStroke)
+    : null;
+  const reachesLimitInMonth = (lastReset || hasRealReading)
+    ? getMonthWhenReachesLimitFromCycle(tool, projectionBaseStrokes, currentMonthRemainingToDo, referenceDate)
     : getMonthWhenReachesLimit(tool, referenceDate);
 
   const productBreakdown: ProductContribution[] = [];
@@ -467,9 +521,15 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
     closedHistoricalStrokes,
     currentMonthForecastedStrokes,
     currentMonthRemainingStrokes,
+    currentMonthRemainingToDo,
     forecastedStrokesAfterMaintenance,
     totalProjectedStrokes,
     remainingStrokes,
+    latestRealReadingDate,
+    realCycleStrokes,
+    realEstimatedStrokes,
+    realRemainingStrokes,
+    realStatus,
     preventiveLimit: tool.preventiveLimit,
     warningLimit: tool.warningLimit,
     status,

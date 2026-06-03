@@ -234,7 +234,92 @@ describe("Controle 50K projection", () => {
     assert.equal(projection.hasMaintenanceInReferenceMonth, true);
     assert.equal(projection.forecastedStrokes, 15500);
     assert.equal(projection.currentMonthRemainingStrokes, 8500);
+    // Falta produzir no mês = restante do mês (8500) menos o já decorrido desde a manutenção (8000).
+    assert.equal(projection.currentMonthRemainingToDo, 500);
     assert.equal(projection.totalProjectedStrokes, 16500);
+  });
+
+  it("leaves real-cycle fields null when there is no stroke reading", () => {
+    const projection = getToolProjection(makeTool(), monthDate(2026, 5, 20));
+
+    assert.equal(projection.latestRealReadingDate, null);
+    assert.equal(projection.realCycleStrokes, null);
+    assert.equal(projection.realEstimatedStrokes, null);
+    assert.equal(projection.realRemainingStrokes, null);
+    assert.equal(projection.realStatus, null);
+  });
+
+  it("anchors the real balance on the latest reading and grows it by the daily estimate", () => {
+    const projection = getToolProjection(
+      makeTool({
+        forecasts: [forecast(2026, 6, 6000)], // 6000 / 2 shots = 3000 batidas/mês
+        strokeReadings: [{ readingDate: monthDate(2026, 6, 1), cycleStrokes: 20000 }],
+      }),
+      monthDate(2026, 6, 16), // 15 de 30 dias decorridos → +1500
+    );
+
+    assert.equal(projection.latestRealReadingDate, "2026-06-01T12:00:00.000Z");
+    assert.equal(projection.realCycleStrokes, 20000);
+    assert.equal(projection.realEstimatedStrokes, 21500);
+    assert.equal(projection.realRemainingStrokes, 28500);
+    assert.equal(projection.realStatus, "OK");
+    // Projeção principal ancorada no acúmulo real (21500) + forecast futuro (3000), não nas batidas estimadas.
+    assert.equal(projection.totalProjectedStrokes, 24500);
+    assert.equal(projection.remainingStrokes, 25500);
+    assert.equal(projection.status, "OK");
+    assert.equal(projection.reachesLimitInMonth, undefined);
+  });
+
+  it("falls back to estimated strokes for the projection when there is no real reading", () => {
+    const withReal = getToolProjection(
+      makeTool({
+        forecasts: [forecast(2026, 6, 6000)],
+        strokeReadings: [{ readingDate: monthDate(2026, 6, 1), cycleStrokes: 20000 }],
+      }),
+      monthDate(2026, 6, 16),
+    );
+    const withoutReal = getToolProjection(
+      makeTool({ forecasts: [forecast(2026, 6, 6000)] }),
+      monthDate(2026, 6, 16),
+    );
+
+    // Sem leitura, a projeção usa as batidas estimadas (base menor) → saldo maior.
+    assert.equal(withoutReal.realEstimatedStrokes, null);
+    assert.equal(withoutReal.remainingStrokes, 45500); // 50000 - (1500 estimado + 3000 forecast)
+    assert.ok(withReal.remainingStrokes < withoutReal.remainingStrokes);
+  });
+
+  it("ignores readings taken before the last reset and uses the in-cycle reading", () => {
+    const projection = getToolProjection(
+      makeTool({
+        maintenanceRecords: [{ maintenanceDate: monthDate(2026, 5, 10), resetCounter: true }],
+        strokeReadings: [
+          { readingDate: monthDate(2026, 5, 5), cycleStrokes: 9999 }, // antes do reset → ignorada
+          { readingDate: monthDate(2026, 5, 15), cycleStrokes: 25000 }, // no ciclo
+        ],
+      }),
+      monthDate(2026, 5, 15),
+    );
+
+    assert.equal(projection.latestRealReadingDate, "2026-05-15T12:00:00.000Z");
+    assert.equal(projection.realCycleStrokes, 25000);
+    assert.equal(projection.realEstimatedStrokes, 25000);
+    assert.equal(projection.realRemainingStrokes, 25000);
+    assert.equal(projection.realStatus, "OK");
+  });
+
+  it("derives the real status from the real accumulated reading", () => {
+    const projection = getToolProjection(
+      makeTool({
+        forecasts: [forecast(2026, 5, 0)], // sem crescimento: status vem só da leitura
+        strokeReadings: [{ readingDate: monthDate(2026, 5, 20), cycleStrokes: 47000 }],
+      }),
+      monthDate(2026, 5, 20),
+    );
+
+    assert.equal(projection.realEstimatedStrokes, 47000);
+    assert.equal(projection.realRemainingStrokes, 3000);
+    assert.equal(projection.realStatus, "PROGRAMAR_PREVENTIVA"); // >= warningLimit (45000)
   });
 
   it("reports a registration error and zeroes calculated strokes for invalid shotsPerStroke", () => {

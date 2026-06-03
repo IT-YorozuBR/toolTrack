@@ -37,9 +37,10 @@ function formatDate(date: string | null): string {
 export default async function Controle50KPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; press?: string; search?: string; page?: string; minStrokes?: string; reachesMonth?: string; simulatedate?: string; sort?: string }>;
+  searchParams: Promise<{ status?: string; press?: string; search?: string; page?: string; minStrokes?: string; reachesMonth?: string; simulatedate?: string; sort?: string; statusView?: string }>;
 }) {
   const params = await searchParams;
+  const isRealView = params.statusView === "real";
   const minStrokes = params.minStrokes ? parseInt(params.minStrokes) : undefined;
   const referenceDate = params.simulatedate ? new Date(params.simulatedate) : undefined;
 
@@ -69,6 +70,9 @@ export default async function Controle50KPage({
     },
     monthlySnapshots: {
       orderBy: { referenceMonth: "asc" as const },
+    },
+    strokeReadings: {
+      orderBy: { readingDate: "desc" as const },
     },
   } as const;
 
@@ -111,7 +115,7 @@ export default async function Controle50KPage({
   let projections = getAllToolsProjection(tools, referenceDate);
 
   if (params.status) {
-    projections = projections.filter((p) => p.status === params.status);
+    projections = projections.filter((p) => (isRealView ? p.realStatus : p.status) === params.status);
   }
 
   // Available months derived from filtered projections (before reachesMonth filter)
@@ -150,8 +154,24 @@ export default async function Controle50KPage({
     if (params.reachesMonth) urlParams.set("reachesMonth", params.reachesMonth);
     if (params.simulatedate) urlParams.set("simulatedate", params.simulatedate);
     if (params.sort) urlParams.set("sort", params.sort);
+    if (params.statusView) urlParams.set("statusView", params.statusView);
     urlParams.set("page", String(p));
     return `/controle-50k?${urlParams.toString()}`;
+  }
+
+  // Alterna o cabeçalho Status entre estimado (forecast) e real (acúmulo real), preservando os demais filtros.
+  function buildStatusViewUrl() {
+    const urlParams = new URLSearchParams();
+    if (params.status) urlParams.set("status", params.status);
+    if (params.press) urlParams.set("press", params.press);
+    if (params.search) urlParams.set("search", params.search);
+    if (params.minStrokes) urlParams.set("minStrokes", params.minStrokes);
+    if (params.reachesMonth) urlParams.set("reachesMonth", params.reachesMonth);
+    if (params.simulatedate) urlParams.set("simulatedate", params.simulatedate);
+    if (params.sort) urlParams.set("sort", params.sort);
+    if (!isRealView) urlParams.set("statusView", "real");
+    const qs = urlParams.toString();
+    return `/controle-50k${qs ? `?${qs}` : ""}`;
   }
 
   return (
@@ -213,7 +233,10 @@ export default async function Controle50KPage({
                     Últ. manut.
                   </th>
                   <th className="w-[8.5%] px-3 py-2 text-right text-[10px] font-medium text-gray-500 uppercase">
-                    Estimadas
+                    Batidas Estimadas
+                  </th>
+                  <th className="w-[8%] px-3 py-2 text-right text-[10px] font-medium text-blue-600 uppercase">
+                    Acúmulo Real
                   </th>
                   <th className="w-[8%] px-3 py-2 text-right text-[10px] font-medium text-gray-500 uppercase">
                     Restante mês
@@ -225,13 +248,27 @@ export default async function Controle50KPage({
                     </th>
                   ))}
                   <th className="w-[8%] px-3 py-2 text-right text-[10px] font-medium text-gray-500 uppercase">
-                    Projetado
+                    Projetado 4 Meses
                   </th>
                   <th className="w-[8%] px-3 py-2 text-right text-[10px] font-medium text-gray-500 uppercase">
-                    Saldo 50k
+                    Saldo 50k Estimado
+                  </th>
+                  <th className="w-[8%] px-3 py-2 text-right text-[10px] font-medium text-gray-500 uppercase">
+                    Saldo 50k Real
                   </th>
                   <th className="w-[8%] px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">
-                    Status
+                    <a
+                      href={buildStatusViewUrl()}
+                      title={
+                        isRealView
+                          ? "Mostrando status real (acúmulo real). Clique para ver o status estimado."
+                          : "Mostrando status estimado (forecast). Clique para ver o status real."
+                      }
+                      className={`inline-flex items-center gap-1 hover:text-gray-800 ${isRealView ? "text-blue-600" : ""}`}
+                    >
+                      Status {isRealView ? "Real" : "Estimado"}
+                      <span className="text-gray-400">⇄</span>
+                    </a>
                   </th>
                   <th className="w-[8%] px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">
                     Atinge
@@ -246,11 +283,11 @@ export default async function Controle50KPage({
                   <tr
                     key={p.toolId}
                     className={`hover:bg-gray-50 ${
-                      p.status === "VENCIDO"
+                      (isRealView ? p.realStatus : p.status) === "VENCIDO"
                         ? "bg-red-50"
-                        : p.status === "PROGRAMAR_PREVENTIVA"
+                        : (isRealView ? p.realStatus : p.status) === "PROGRAMAR_PREVENTIVA"
                         ? "bg-orange-50"
-                        : p.status === "ATENCAO"
+                        : (isRealView ? p.realStatus : p.status) === "ATENCAO"
                         ? "bg-yellow-50"
                         : ""
                     }`}
@@ -285,6 +322,18 @@ export default async function Controle50KPage({
                         {formatNumber(p.estimatedStrokes)}
                       </span>
                     </td>
+                    <td
+                      className={`px-3 py-2 text-right tabular-nums ${
+                        p.realEstimatedStrokes !== null ? "font-medium text-blue-600" : "text-gray-400"
+                      }`}
+                      title={
+                        p.realEstimatedStrokes !== null && p.realCycleStrokes !== null
+                          ? `${formatNumber(p.realCycleStrokes)} batidas registradas (leitura de ${formatDate(p.latestRealReadingDate)}) + ${formatNumber(Math.round(p.realEstimatedStrokes - p.realCycleStrokes))} estimadas pelos dias = ${formatNumber(Math.round(p.realEstimatedStrokes))}`
+                          : "Sem leitura real registrada neste ciclo"
+                      }
+                    >
+                      {p.realEstimatedStrokes !== null ? formatNumber(Math.round(p.realEstimatedStrokes)) : "—"}
+                    </td>
                     <td className="px-3 py-2 text-right tabular-nums">
                       <span
                         className={
@@ -294,11 +343,11 @@ export default async function Controle50KPage({
                         }
                         title={
                           p.hasMaintenanceInReferenceMonth
-                            ? "Batidas previstas restantes no mês após a manutenção registrada"
-                            : "Batidas previstas para o mês de referência"
+                            ? "Batidas que ainda faltam produzir no mês (previsão após a manutenção menos o já decorrido)"
+                            : "Batidas que ainda faltam produzir no mês (previsão do mês menos o já decorrido até hoje)"
                         }
                       >
-                        {formatNumber(Math.round(p.currentMonthRemainingStrokes))}
+                        {formatNumber(p.currentMonthRemainingToDo)}
                       </span>
                     </td>
                     {p.window.map((m) => (
@@ -320,8 +369,31 @@ export default async function Controle50KPage({
                     >
                       {formatNumber(Math.round(p.remainingStrokes))}
                     </td>
+                    <td
+                      className={`px-3 py-2 text-right tabular-nums font-semibold ${
+                        p.realRemainingStrokes === null
+                          ? "text-gray-400"
+                          : p.realRemainingStrokes < 0
+                          ? "text-red-600"
+                          : p.realRemainingStrokes < 5000
+                          ? "text-orange-600"
+                          : "text-gray-900"
+                      }`}
+                    >
+                      {p.realRemainingStrokes !== null ? formatNumber(Math.round(p.realRemainingStrokes)) : "—"}
+                    </td>
                     <td className="px-3 py-2">
-                      <StatusBadge status={p.status} />
+                      {isRealView ? (
+                        p.realStatus ? (
+                          <StatusBadge status={p.realStatus} />
+                        ) : (
+                          <span className="text-[10px] text-gray-400" title="Sem leitura real registrada neste ciclo">
+                            sem leitura
+                          </span>
+                        )
+                      ) : (
+                        <StatusBadge status={p.status} />
+                      )}
                     </td>
                     <td className="px-3 py-2 text-[10px] text-gray-600">
                       {p.reachesLimitInMonth ?? "—"}
