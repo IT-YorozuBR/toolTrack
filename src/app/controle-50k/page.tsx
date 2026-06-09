@@ -236,9 +236,9 @@ export default async function Controle50KPage({
         />
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mt-4">
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[calc(100vh-18rem)]">
             <table className="w-full table-fixed text-[11px] leading-tight">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="sticky top-0 z-10 bg-gray-50 [&_th]:bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="w-[18%] px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">
                     Ferramental
