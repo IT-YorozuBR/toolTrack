@@ -17,7 +17,7 @@ const TABLE_FILTERS = [
   "reachesMonth",
   "reachesFrom",
   "reachesTo",
-  "simulatedate",
+  "simulateDate",
   "statusView",
   "saldoSign",
 ] as const;

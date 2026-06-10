@@ -67,7 +67,7 @@ export function VolumeGrid({ rows, cols }: Props) {
 
     await upsertProductionForecast({
       productId: editing.productId,
-      referenceMonth: new Date(year, month - 1, 1),
+      referenceMonth: new Date(Date.UTC(year, month - 1, 1, 12)),
       plannedQuantity: qty,
     });
 

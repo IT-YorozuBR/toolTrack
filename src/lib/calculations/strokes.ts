@@ -41,9 +41,17 @@ export type ToolProjection = {
   totalProjectedStrokes: number;
   remainingStrokes: number;
   latestRealReadingDate: string | null;
+  // Dias desde a última leitura física no ciclo (null quando não há leitura).
+  daysSinceLastReading: number | null;
+  // true quando há leitura mas ela está velha demais (> STALE_READING_DAYS): o
+  // "Real" pode estar subcontando porque a produção real pode superar a previsão.
+  readingStale: boolean;
   realCycleStrokes: number | null;
   realEstimatedStrokes: number | null;
   realRemainingStrokes: number | null;
+  // Saldo 50k "atual": limite − acúmulo efetivo (real ancorado quando há leitura,
+  // senão estimado). Sempre definido — usado na coluna "Saldo 50k Atual".
+  currentRemainingStrokes: number;
   realStatus: MaintenanceStatus | null;
   // Status efetivo = real quando há leitura, senão cai para o estimado (projeção).
   effectiveStatus: MaintenanceStatus;
@@ -112,6 +120,12 @@ type ToolWithRelations = {
   monthlySnapshots?: MonthlySnapshotForProjection[];
   strokeReadings?: StrokeReadingForProjection[];
 };
+
+// Acima deste número de dias sem nova leitura física, a leitura é considerada
+// "defasada": o acúmulo Real deixa de ser confiável como checkpoint e o sistema
+// passa a depender só da estimativa (que pode subcontar se a produção real >
+// prevista). Usado para sinalizar na UI que é hora de uma nova medição.
+export const STALE_READING_DAYS = 30;
 
 const PT_MONTHS = [
   "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
@@ -190,10 +204,13 @@ export function calculateClosedMonthStrokes(tool: ToolWithRelations, monthDate: 
   if (!lastResetBeforeMonthEnd) return Math.round(monthlyStrokes);
 
   if (isSameMonth(lastResetBeforeMonthEnd.maintenanceDate, monthDate)) {
-    return Math.max(
-      0,
-      Math.round(monthlyStrokes - (lastResetBeforeMonthEnd.strokesAtMaintenance ?? 0)),
-    );
+    // Só a parte do mês APÓS o reset pertence ao novo ciclo. Rateia por dias (mesma
+    // premissa de calculateEstimatedStrokes) em vez de subtrair strokesAtMaintenance —
+    // que é o contador de vida (~50k) e zeraria o mês, subcontando o ciclo novo.
+    const daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
+    const resetDay = lastResetBeforeMonthEnd.maintenanceDate.getDate();
+    const daysAfterReset = Math.max(0, daysInMonth - resetDay);
+    return Math.round((monthlyStrokes * daysAfterReset) / daysInMonth);
   }
 
   return Math.round(monthlyStrokes);
@@ -320,7 +337,10 @@ function getLastReset(tool: ToolWithRelations): MaintenanceRecordForProjection |
 
 // Saldo 50K real: ancora na última leitura do contador do ciclo e cresce pela
 // estimativa diária (calculateEstimatedStrokes) entre a leitura e hoje. Leituras
-// anteriores ao último reset (manutenção) são ignoradas — pertencem a outro ciclo.
+// no instante do reset ou anteriores (`<= maintenanceDate`) são ignoradas — pertencem
+// ao ciclo anterior. Assim a manutenção funciona como checkpoint: o ciclo novo só
+// passa a ter "real" quando há uma leitura posterior à manutenção; até lá, o status
+// cai para o estimado (que já parte de zero a partir da data do reset).
 function getRealCycleEstimate(
   tool: ToolWithRelations,
   lastReset: MaintenanceRecordForProjection | undefined,
@@ -335,7 +355,7 @@ function getRealCycleEstimate(
   const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
   const reading = tool.strokeReadings
     .map((r) => ({ ...r, readingDate: new Date(r.readingDate) }))
-    .filter((r) => r.readingDate <= todayEnd && (!cycleStart || r.readingDate >= cycleStart))
+    .filter((r) => r.readingDate <= todayEnd && (!cycleStart || r.readingDate.getTime() > cycleStart.getTime()))
     .sort((a, b) => b.readingDate.getTime() - a.readingDate.getTime())[0];
 
   if (!reading) return null;
@@ -479,6 +499,10 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
   const realCycleStrokes = realCycle?.reading.cycleStrokes ?? null;
   const realEstimatedStrokes = realCycle?.estimated ?? null;
   const latestRealReadingDate = realCycle ? realCycle.reading.readingDate.toISOString() : null;
+  const daysSinceLastReading = realCycle
+    ? Math.max(0, Math.floor((today.getTime() - realCycle.reading.readingDate.getTime()) / 86_400_000))
+    : null;
+  const readingStale = daysSinceLastReading !== null && daysSinceLastReading > STALE_READING_DAYS;
   // Acúmulo Real = leitura física crua (sem estimativa de dias). Saldo/status reais são um
   // "checkpoint" do estado na última medição.
   const realRemainingStrokes = realCycleStrokes !== null ? tool.preventiveLimit - realCycleStrokes : null;
@@ -494,6 +518,8 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
     ? projectionBaseStrokes + forecastedStrokesAfterMaintenance
     : projectionBaseStrokes + forecastedStrokes;
   const remainingStrokes = tool.preventiveLimit - totalProjectedStrokes;
+  // Saldo atual = limite − acúmulo efetivo de hoje (sem projeção dos meses futuros).
+  const currentRemainingStrokes = tool.preventiveLimit - Math.round(estimatedAccumulated);
 
   // VENCIDO só quando o acúmulo atual (real ou estimado) já passou do limite; a projeção
   // pode no máximo disparar PROGRAMAR_PREVENTIVA / ATENÇÃO (aviso antecipado).
@@ -560,9 +586,12 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
     totalProjectedStrokes,
     remainingStrokes,
     latestRealReadingDate,
+    daysSinceLastReading,
+    readingStale,
     realCycleStrokes,
     realEstimatedStrokes,
     realRemainingStrokes,
+    currentRemainingStrokes,
     realStatus,
     effectiveStatus,
     statusFromEstimate,

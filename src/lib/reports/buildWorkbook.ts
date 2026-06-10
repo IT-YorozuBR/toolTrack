@@ -36,7 +36,7 @@ export type ReportInput = {
     press?: string;
     status?: string;
     search?: string;
-    simulatedate?: string;
+    simulateDate?: string;
     saldoSign?: string;
     from: Date;
     to: Date;
@@ -88,7 +88,7 @@ function metadataRows(input: ReportInput): (string | number)[][] {
   if (f.press) applied.push(`Prensa: ${f.press}`);
   if (f.status) applied.push(`Status: ${f.status}`);
   if (f.search) applied.push(`Busca: ${f.search}`);
-  if (f.simulatedate) applied.push(`Data simulada: ${formatDate(f.simulatedate)}`);
+  if (f.simulateDate) applied.push(`Data simulada: ${formatDate(f.simulateDate)}`);
   const saldoConvencao =
     f.saldoSign === "excedente" ? "excedente (uso − limite)" : "restante (limite − uso)";
   return [

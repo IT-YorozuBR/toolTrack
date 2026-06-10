@@ -10,7 +10,7 @@ require("ts-node").register({
   },
 });
 
-const { getToolProjection } = require("./strokes.ts");
+const { getToolProjection, calculateClosedMonthStrokes } = require("./strokes.ts");
 
 function monthDate(year, month, day = 1) {
   return new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
@@ -313,6 +313,26 @@ describe("Controle 50K projection", () => {
     assert.equal(projection.realStatus, "OK");
   });
 
+  it("ignores a reading taken at the exact reset instant (treats maintenance as a fresh checkpoint)", () => {
+    const projection = getToolProjection(
+      makeTool({
+        maintenanceRecords: [{ maintenanceDate: monthDate(2026, 5, 10), resetCounter: true }],
+        strokeReadings: [
+          // Mesma data/instante do reset → pertence ao ciclo anterior, deve ser ignorada.
+          { readingDate: monthDate(2026, 5, 10), cycleStrokes: 32000 },
+        ],
+      }),
+      monthDate(2026, 5, 10),
+    );
+
+    // Sem leitura posterior ao reset: o real fica indefinido e o status cai para o estimado.
+    assert.equal(projection.realCycleStrokes, null);
+    assert.equal(projection.realEstimatedStrokes, null);
+    assert.equal(projection.realRemainingStrokes, null);
+    assert.equal(projection.realStatus, null);
+    assert.equal(projection.statusFromEstimate, true);
+  });
+
   it("derives the real status from the real accumulated reading", () => {
     const projection = getToolProjection(
       makeTool({
@@ -375,6 +395,49 @@ describe("Controle 50K projection", () => {
     );
 
     assert.equal(projection.status, "VENCIDO");
+  });
+
+  it("prorates the maintenance month's closed strokes by days after the reset (not by the lifetime counter)", () => {
+    // Mai = 10000 batidas (qty 10000 / 1 shot), reset dia 15 com contador de vida 48000.
+    // Só a parte pós-reset conta: 10000 * (31-15)/31 = 5161. NÃO deve virar 0 por subtrair 48000.
+    const tool = makeTool({
+      shotsPerStroke: 1,
+      forecasts: [forecast(2026, 5, 10000), forecast(2026, 6, 10000), forecast(2026, 7, 10000)],
+      maintenanceRecords: [{ maintenanceDate: monthDate(2026, 5, 15), resetCounter: true, strokesAtMaintenance: 48000 }],
+    });
+
+    assert.equal(calculateClosedMonthStrokes(tool, monthDate(2026, 5)), 5161);
+    assert.equal(calculateClosedMonthStrokes(tool, monthDate(2026, 6)), 10000);
+  });
+
+  it("agrees between snapshot and non-snapshot paths for the cycle accumulation", () => {
+    const common = {
+      shotsPerStroke: 1,
+      forecasts: [forecast(2026, 5, 10000), forecast(2026, 6, 10000), forecast(2026, 7, 10000)],
+      maintenanceRecords: [{ maintenanceDate: monthDate(2026, 5, 15), resetCounter: true, strokesAtMaintenance: 48000 }],
+    };
+    const today = monthDate(2026, 7, 15);
+    const noSnap = getToolProjection(makeTool(common), today);
+    const withSnap = getToolProjection(
+      makeTool({
+        ...common,
+        monthlySnapshots: [
+          { referenceMonth: monthDate(2026, 5), strokes: 5161, cycleStartedAt: monthDate(2026, 5, 15) },
+          { referenceMonth: monthDate(2026, 6), strokes: 10000, cycleStartedAt: monthDate(2026, 5, 15) },
+        ],
+      }),
+      today,
+    );
+
+    // Ambos os caminhos devem convergir (~20000), sem subcontar o mês da manutenção.
+    // Diferem só por arredondamento (snapshot arredonda cada mês; o outro uma vez ao fim) —
+    // o que importa é a proximidade e que não caiam para o ~14516 do bug antigo.
+    assert.ok(noSnap.estimatedStrokes > 19000, `esperado > 19000, veio ${noSnap.estimatedStrokes}`);
+    assert.ok(withSnap.estimatedStrokes > 19000, `esperado > 19000, veio ${withSnap.estimatedStrokes}`);
+    assert.ok(
+      Math.abs(withSnap.estimatedStrokes - noSnap.estimatedStrokes) < 400,
+      `caminhos divergem: snap=${withSnap.estimatedStrokes} vs noSnap=${noSnap.estimatedStrokes}`,
+    );
   });
 
   it("reports a registration error and zeroes calculated strokes for invalid shotsPerStroke", () => {

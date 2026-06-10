@@ -8,8 +8,15 @@ export async function upsertProjectForecast(data: {
   plannedQuantity: number;
 }) {
   try {
-    const monthStart = new Date(data.referenceMonth.getFullYear(), data.referenceMonth.getMonth(), 1);
-    const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
+    const d = data.referenceMonth;
+    // Componentes em UTC para não depender do fuso do servidor.
+    const y = d.getUTCFullYear();
+    const m = d.getUTCMonth();
+    // Faixa do mês em UTC (meia-noite) localiza registros existentes, inclusive âncoras antigas.
+    const monthStart = new Date(Date.UTC(y, m, 1));
+    const monthEnd = new Date(Date.UTC(y, m + 1, 1));
+    // Grava no meio-dia UTC: getMonth()/getDate() locais caem no mês certo em qualquer fuso.
+    const monthAnchor = new Date(Date.UTC(y, m, 1, 12));
 
     const existing = await prisma.projectForecast.findFirst({
       where: { projectId: data.projectId, referenceMonth: { gte: monthStart, lt: monthEnd } },
@@ -26,7 +33,7 @@ export async function upsertProjectForecast(data: {
       }
     } else if (data.plannedQuantity > 0) {
       await prisma.projectForecast.create({
-        data: { projectId: data.projectId, referenceMonth: monthStart, plannedQuantity: data.plannedQuantity },
+        data: { projectId: data.projectId, referenceMonth: monthAnchor, plannedQuantity: data.plannedQuantity },
       });
     }
 

@@ -245,6 +245,17 @@ export async function autoEnsureMonthlySnapshots(referenceDate?: Date): Promise<
     },
   });
 
+  // Coleta todos os snapshots faltantes e grava num único createMany (skipDuplicates
+  // cobre corridas e meses já fechados) em vez de um upsert sequencial por mês/ferramenta.
+  const toCreate: {
+    toolId: string;
+    referenceMonth: Date;
+    strokes: number;
+    forecastStrokes: number;
+    cycleStartedAt: Date | null;
+    source: string;
+  }[] = [];
+
   for (const tool of tools) {
     const lastReset = tool.maintenanceRecords.at(-1);
     const cycleStart = lastReset ? startOfMonth(lastReset.maintenanceDate) : startOfMonth(tool.maintenanceRecords[0]?.maintenanceDate ?? today);
@@ -254,23 +265,22 @@ export async function autoEnsureMonthlySnapshots(referenceDate?: Date): Promise<
     while (cursor < currentMonthStart) {
       const key = toMonthKey(cursor);
       if (!snapshotKeys.has(key)) {
-        const appliedStrokes = calculateClosedMonthStrokes(tool, cursor);
-        const forecastStrokes = Math.round(calculateStrokesForMonth(tool, calcMonthKey(cursor)));
-        await prisma.toolMonthlyStrokeSnapshot.upsert({
-          where: { toolId_referenceMonth: { toolId: tool.id, referenceMonth: cursor } },
-          create: {
-            toolId: tool.id,
-            referenceMonth: cursor,
-            strokes: appliedStrokes,
-            forecastStrokes,
-            cycleStartedAt: lastReset?.maintenanceDate ?? null,
-            source: "auto:forecast",
-          },
-          update: {},
+        const referenceMonth = new Date(cursor);
+        toCreate.push({
+          toolId: tool.id,
+          referenceMonth,
+          strokes: calculateClosedMonthStrokes(tool, referenceMonth),
+          forecastStrokes: Math.round(calculateStrokesForMonth(tool, calcMonthKey(referenceMonth))),
+          cycleStartedAt: lastReset?.maintenanceDate ?? null,
+          source: "auto:forecast",
         });
       }
       cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
     }
+  }
+
+  if (toCreate.length > 0) {
+    await prisma.toolMonthlyStrokeSnapshot.createMany({ data: toCreate, skipDuplicates: true });
   }
 }
 

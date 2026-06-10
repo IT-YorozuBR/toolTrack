@@ -1,5 +1,6 @@
 import { formatNumber } from "@/lib/utils";
 import Link from "next/link";
+import { DeleteMaintenanceButton } from "./DeleteMaintenanceButton";
 
 type MaintenanceRecord = {
   id: string;
@@ -86,10 +87,11 @@ export function MaintenanceList({ tool, backUrl }: { tool: Tool; backUrl: string
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Responsável</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contador</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Observação</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {records.map((r) => (
+                {records.map((r, idx) => (
                   <tr key={r.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-gray-700">
                       {new Date(r.maintenanceDate).toLocaleDateString("pt-BR")}
@@ -110,6 +112,18 @@ export function MaintenanceList({ tool, backUrl }: { tool: Tool; backUrl: string
                     </td>
                     <td className="px-6 py-4 text-gray-500 max-w-xs truncate" title={r.notes ?? undefined}>
                       {r.notes ?? "—"}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      {idx === 0 ? (
+                        <DeleteMaintenanceButton id={r.id} />
+                      ) : (
+                        <span
+                          className="text-xs text-gray-300"
+                          title="Só é possível excluir a manutenção mais recente do ferramental."
+                        >
+                          —
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}

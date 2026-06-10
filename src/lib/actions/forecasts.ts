@@ -9,8 +9,14 @@ export async function upsertProductionForecast(data: {
 }) {
   try {
     const d = data.referenceMonth;
-    const monthStart = new Date(d.getFullYear(), d.getMonth(), 1);
-    const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    // Componentes em UTC para não depender do fuso do servidor.
+    const y = d.getUTCFullYear();
+    const m = d.getUTCMonth();
+    // Faixa do mês em UTC (meia-noite) localiza registros existentes, inclusive âncoras antigas.
+    const monthStart = new Date(Date.UTC(y, m, 1));
+    const monthEnd = new Date(Date.UTC(y, m + 1, 1));
+    // Grava no meio-dia UTC: getMonth()/getDate() locais caem no mês certo em qualquer fuso.
+    const monthAnchor = new Date(Date.UTC(y, m, 1, 12));
 
     const existing = await prisma.productionForecast.findFirst({
       where: { productId: data.productId, referenceMonth: { gte: monthStart, lt: monthEnd } },
@@ -27,7 +33,7 @@ export async function upsertProductionForecast(data: {
       }
     } else if (data.plannedQuantity > 0) {
       await prisma.productionForecast.create({
-        data: { productId: data.productId, referenceMonth: monthStart, plannedQuantity: data.plannedQuantity },
+        data: { productId: data.productId, referenceMonth: monthAnchor, plannedQuantity: data.plannedQuantity },
       });
     }
 

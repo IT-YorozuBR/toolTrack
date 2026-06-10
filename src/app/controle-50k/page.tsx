@@ -35,10 +35,22 @@ function formatDate(date: string | null): string {
   return new Date(date).toLocaleDateString("pt-BR");
 }
 
+// Detalha de quais produtos vieram as batidas previstas de um mês:
+// cada parcela = volume previsto × qtd no BOM ÷ batidas por golpe.
+function monthBreakdownText(p: ToolProjection, monthKey: string): string {
+  const parts = p.productBreakdown
+    .map((b) => ({ code: b.productCode, strokes: Math.round(b.strokesByMonth[monthKey] ?? 0) }))
+    .filter((x) => x.strokes > 0);
+  if (parts.length === 0) return "Sem previsão de volume para este mês.";
+  const sum = parts.map((x) => `${x.code}: ${formatNumber(x.strokes)}`).join("  +  ");
+  const total = formatNumber(parts.reduce((s, x) => s + x.strokes, 0));
+  return parts.length > 1 ? `${sum}  =  ${total}` : sum;
+}
+
 export default async function Controle50KPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; press?: string; search?: string; page?: string; minStrokes?: string; reachesMonth?: string; reachesFrom?: string; reachesTo?: string; simulatedate?: string; sort?: string; statusView?: string; saldoSign?: string }>;
+  searchParams: Promise<{ status?: string; press?: string; search?: string; page?: string; minStrokes?: string; reachesMonth?: string; reachesFrom?: string; reachesTo?: string; simulateDate?: string; sort?: string; statusView?: string; saldoSign?: string }>;
 }) {
   const params = await searchParams;
   // Real é o padrão; só vai para estimado quando explicitamente pedido (?statusView=estimado).
@@ -48,9 +60,16 @@ export default async function Controle50KPage({
   const saldoExcedente = params.saldoSign === "excedente";
   const showSaldo = (remaining: number) => Math.round(saldoExcedente ? -remaining : remaining);
   const minStrokes = params.minStrokes ? parseInt(params.minStrokes) : undefined;
-  const referenceDate = params.simulatedate ? new Date(params.simulatedate) : undefined;
+  // Data simulada: trata a projeção como se "hoje" fosse essa data (para simular datas futuras).
+  // Parseia ao meio-dia local para evitar deslocamento de fuso em strings YYYY-MM-DD.
+  const referenceDate = params.simulateDate
+    ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(params.simulateDate) ? `${params.simulateDate}T12:00:00` : params.simulateDate)
+    : undefined;
 
-  void autoEnsureMonthlySnapshots(referenceDate);
+  // Aguardado (não fire-and-forget): garante que os snapshots de meses fechados
+  // existam ANTES de carregar os ferramentais, senão o render usa dados defasados
+  // e, em serverless, a tarefa pendurada pode ser cortada ao retornar a resposta.
+  await autoEnsureMonthlySnapshots(referenceDate);
 
   const toolInclude = {
     bomItems: {
@@ -78,23 +97,25 @@ export default async function Controle50KPage({
       orderBy: { referenceMonth: "asc" as const },
     },
     strokeReadings: {
+      // Só a leitura mais recente do ciclo é usada na projeção; manter as últimas
+      // poucas evita carregar o histórico inteiro (cresce indefinidamente) por load.
       orderBy: { readingDate: "desc" as const },
+      take: 12,
     },
   } as const;
 
-  const [tools, allActiveTools, allPresses] = await Promise.all([
+  // press/search restringem o conjunto carregado no banco; status/minStrokes/reaches
+  // são aplicados em memória depois. Só vale carregar "todos os ativos" à parte
+  // (para os contadores globais) quando há um desses filtros de banco; senão `tools`
+  // já é o conjunto completo e é reusado — evita carregar a tabela inteira duas vezes.
+  const hasDbToolFilter = Boolean(params.press || params.search);
+  const [tools, allPresses] = await Promise.all([
     prisma.tool.findMany({
       where: {
         active: true,
         ...(params.press ? { press: params.press } : {}),
         ...(params.search ? { code: { contains: params.search, mode: "insensitive" } } : {}),
-        ...(minStrokes ? { currentStrokes: { gte: minStrokes } } : {}),
       },
-      include: toolInclude,
-      orderBy: { code: "asc" },
-    }),
-    prisma.tool.findMany({
-      where: { active: true },
       include: toolInclude,
       orderBy: { code: "asc" },
     }),
@@ -104,6 +125,13 @@ export default async function Controle50KPage({
       orderBy: { press: "asc" },
     }),
   ]);
+  const allActiveTools = hasDbToolFilter
+    ? await prisma.tool.findMany({
+        where: { active: true },
+        include: toolInclude,
+        orderBy: { code: "asc" },
+      })
+    : tools;
 
   const windowDates = getWindowDates(referenceDate);
 
@@ -121,11 +149,20 @@ export default async function Controle50KPage({
     vencido: allProjections.filter((p) => statusOf(p) === "VENCIDO").length,
   };
 
-  // Filtered projections for the table
-  let projections = getAllToolsProjection(tools, referenceDate);
+  // Filtered projections for the table. Sem filtro de banco, `tools === allActiveTools`,
+  // então reaproveita as projeções globais já calculadas em vez de recalcular tudo.
+  let projections = hasDbToolFilter
+    ? getAllToolsProjection(tools, referenceDate)
+    : [...allProjections];
 
   if (params.status) {
     projections = projections.filter((p) => statusOf(p) === params.status);
+  }
+
+  // Filtra pelo acúmulo efetivamente exibido (Acúmulo Estimado), não pelo
+  // currentStrokes cru do banco — assim o filtro bate com o número da tela.
+  if (minStrokes) {
+    projections = projections.filter((p) => Math.round(p.estimatedAccumulated) >= minStrokes);
   }
 
   // Available months derived from filtered projections (before reachesMonth filter)
@@ -153,20 +190,11 @@ export default async function Controle50KPage({
 
   // Sem ordenação explícita, ordena pelo saldo da visão ativa (real por padrão).
   const sort = params.sort ?? (isRealView ? "real_asc" : "saldo_asc");
-  // Ordena por saldo real mantendo ferramentas sem leitura (null) sempre no fim.
-  const compareRealRemaining = (a: typeof projections[number], b: typeof projections[number], asc: boolean) => {
-    const av = a.realRemainingStrokes;
-    const bv = b.realRemainingStrokes;
-    if (av === null && bv === null) return 0;
-    if (av === null) return 1;
-    if (bv === null) return -1;
-    return asc ? av - bv : bv - av;
-  };
   projections = [...projections].sort((a, b) => {
     switch (sort) {
       case "saldo_desc":    return b.remainingStrokes - a.remainingStrokes;
-      case "real_asc":      return compareRealRemaining(a, b, true);
-      case "real_desc":     return compareRealRemaining(a, b, false);
+      case "real_asc":      return a.currentRemainingStrokes - b.currentRemainingStrokes;
+      case "real_desc":     return b.currentRemainingStrokes - a.currentRemainingStrokes;
       case "code_asc":      return a.code.localeCompare(b.code);
       case "code_desc":     return b.code.localeCompare(a.code);
       case "estimado_desc": return b.estimatedAccumulated - a.estimatedAccumulated;
@@ -190,7 +218,7 @@ export default async function Controle50KPage({
     if (params.reachesMonth) urlParams.set("reachesMonth", params.reachesMonth);
     if (params.reachesFrom) urlParams.set("reachesFrom", params.reachesFrom);
     if (params.reachesTo) urlParams.set("reachesTo", params.reachesTo);
-    if (params.simulatedate) urlParams.set("simulatedate", params.simulatedate);
+    if (params.simulateDate) urlParams.set("simulateDate", params.simulateDate);
     if (params.sort) urlParams.set("sort", params.sort);
     if (params.statusView) urlParams.set("statusView", params.statusView);
     if (params.saldoSign) urlParams.set("saldoSign", params.saldoSign);
@@ -208,7 +236,7 @@ export default async function Controle50KPage({
     if (params.reachesMonth) urlParams.set("reachesMonth", params.reachesMonth);
     if (params.reachesFrom) urlParams.set("reachesFrom", params.reachesFrom);
     if (params.reachesTo) urlParams.set("reachesTo", params.reachesTo);
-    if (params.simulatedate) urlParams.set("simulatedate", params.simulatedate);
+    if (params.simulateDate) urlParams.set("simulateDate", params.simulateDate);
     if (params.sort) urlParams.set("sort", params.sort);
     if (params.saldoSign) urlParams.set("saldoSign", params.saldoSign);
     // Real é o padrão (sem param). Estando em real, o toggle leva para estimado; estando em estimado, volta ao padrão.
@@ -221,8 +249,8 @@ export default async function Controle50KPage({
     <div>
       {referenceDate && (
         <div className="mb-4 px-4 py-2 bg-yellow-50 border border-yellow-300 rounded-lg text-sm text-yellow-800">
-          Simulando data: <strong>{referenceDate.toLocaleDateString("pt-BR")}</strong> —{" "}
-          <a href="/controle-50k" className="underline">voltar para hoje</a>
+          Simulando data: <strong>{referenceDate.toLocaleDateString("pt-BR")}</strong> — a projeção, status e janela de meses são calculados como se hoje fosse essa data.{" "}
+          <a href="/controle-50k" className="underline font-medium">voltar para hoje</a>
         </div>
       )}
       <PageHeader
@@ -267,7 +295,7 @@ export default async function Controle50KPage({
           description="Ajuste os filtros ou cadastre ferramentais para visualizar as projeções."
         />
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mt-4">
+        <div className="bg-white rounded-xlR border border-gray-200 shadow-sm overflow-hidden mt-4">
           <div className="overflow-auto max-h-[calc(100vh-18rem)]">
             <table className="w-full table-fixed text-[11px] leading-tight">
               <thead className="sticky top-0 z-10 bg-gray-50 [&_th]:bg-gray-50 border-b border-gray-200">
@@ -297,7 +325,7 @@ export default async function Controle50KPage({
                     Projetado 4 Meses
                   </th>
                   <th className="w-[8%] px-3 py-2 text-right text-[10px] font-medium text-gray-500 uppercase">
-                    Saldo 50k Estimado
+                    Saldo 50k Estimado 4 MESES
                   </th>
                   <th className="w-[8%] px-3 py-2 text-right text-[10px] font-medium text-gray-500 uppercase">
                     Saldo 50k Atual
@@ -325,7 +353,17 @@ export default async function Controle50KPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {paginatedProjections.map((p) => (
+                {paginatedProjections.map((p) => {
+                  const limit = formatNumber(p.preventiveLimit);
+                  const accum = Math.round(p.estimatedAccumulated);
+                  const futureWindow = Math.round(
+                    p.window.filter((m) => m.offset > 0).reduce((s, m) => s + m.strokes, 0),
+                  );
+                  const hasCycle = p.lastMaintenanceDate !== null || p.realCycleStrokes !== null;
+                  const projetadoTitle = hasCycle
+                    ? `Projeção do ciclo até o fim da janela:\nacúmulo atual (${formatNumber(accum)}) + falta no mês (${formatNumber(p.currentMonthRemainingToDo)}) + meses futuros N+1..N+2 (${formatNumber(futureWindow)}) = ${formatNumber(Math.round(p.totalProjectedStrokes))}.`
+                    : `Acúmulo atual (${formatNumber(accum)}) + previsão da janela de 4 meses (${formatNumber(Math.round(p.forecastedStrokes))}) = ${formatNumber(Math.round(p.totalProjectedStrokes))}.`;
+                  return (
                   <tr
                     key={p.toolId}
                     className={`hover:bg-gray-50 ${
@@ -349,7 +387,14 @@ export default async function Controle50KPage({
                         <p className="mt-0.5 truncate text-[10px] text-red-600">⚠ {p.errors[0]}</p>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-[10px] text-gray-600">
+                    <td
+                      className="px-3 py-2 text-[10px] text-gray-600"
+                      title={
+                        p.lastMaintenanceDate
+                          ? `Início do ciclo atual: última manutenção com reset do contador em ${formatDate(p.lastMaintenanceDate)}. Nada anterior a essa data conta para as 50k.`
+                          : "Sem manutenção com reset registrada — o ciclo conta desde o início dos dados / batidas atuais cadastradas."
+                      }
+                    >
                       {formatDate(p.lastMaintenanceDate)}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
@@ -361,11 +406,11 @@ export default async function Controle50KPage({
                         }
                         title={
                           p.realCycleStrokes !== null
-                            ? `${formatNumber(p.realCycleStrokes)} medido (leitura de ${formatDate(p.latestRealReadingDate)}) + ${formatNumber(Math.round(p.estimatedAccumulated - p.realCycleStrokes))} estimado pelos dias = ${formatNumber(Math.round(p.estimatedAccumulated))}`
-                            : "Estimado pela previsão (sem leitura real neste ciclo)"
+                            ? `Acúmulo Estimado (ancorado na leitura real):\nleitura ${formatNumber(p.realCycleStrokes)} (em ${formatDate(p.latestRealReadingDate)}) + ${formatNumber(accum - p.realCycleStrokes)} estimado pelos dias decorridos = ${formatNumber(accum)} batidas no ciclo.`
+                            : `Acúmulo Estimado desde a última manutenção (sem leitura física neste ciclo).\nFórmula: meses fechados (volume × qtd no BOM ÷ batidas por golpe) + parte já decorrida do mês atual rateada por dias = ${formatNumber(accum)} batidas.`
                         }
                       >
-                        {formatNumber(Math.round(p.estimatedAccumulated))}
+                        {formatNumber(accum)}
                       </span>
                     </td>
                     <td
@@ -374,11 +419,23 @@ export default async function Controle50KPage({
                       }`}
                       title={
                         p.realCycleStrokes !== null
-                          ? `Última leitura: ${formatNumber(p.realCycleStrokes)} batidas em ${formatDate(p.latestRealReadingDate)}`
-                          : "Sem leitura real registrada neste ciclo"
+                          ? `Leitura física crua do contador no ciclo: ${formatNumber(p.realCycleStrokes)} batidas em ${formatDate(p.latestRealReadingDate)}${
+                              p.daysSinceLastReading !== null ? ` (há ${p.daysSinceLastReading} dia(s))` : ""
+                            }.\nSaldo Real = ${limit} − ${formatNumber(p.realCycleStrokes)} = ${formatNumber(p.preventiveLimit - p.realCycleStrokes)}.`
+                          : "Sem leitura física registrada neste ciclo. Registre uma leitura na página Leituras para ancorar o acúmulo real."
                       }
                     >
-                      {p.realCycleStrokes !== null ? formatNumber(p.realCycleStrokes) : "—"}
+                      <div className="flex items-center justify-end gap-1">
+                        {p.readingStale && (
+                          <span
+                            className="rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold text-amber-700 ring-1 ring-amber-300"
+                            title={`Leitura defasada: ${p.daysSinceLastReading} dias sem nova medição. O acúmulo real pode estar subcontando — registre uma nova leitura.`}
+                          >
+                            ⚠ {p.daysSinceLastReading}d
+                          </span>
+                        )}
+                        <span>{p.realCycleStrokes !== null ? formatNumber(p.realCycleStrokes) : "—"}</span>
+                      </div>
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
                       <span
@@ -387,21 +444,23 @@ export default async function Controle50KPage({
                             ? "inline-flex min-w-14 justify-end rounded bg-green-50 px-1.5 py-0.5 font-semibold text-green-800 ring-1 ring-green-200"
                             : "text-gray-700"
                         }
-                        title={
-                          p.hasMaintenanceInReferenceMonth
-                            ? "Batidas que ainda faltam produzir no mês (previsão após a manutenção menos o já decorrido)"
-                            : "Batidas que ainda faltam produzir no mês (previsão do mês menos o já decorrido até hoje)"
-                        }
+                        title={`Batidas que ainda faltam produzir no mês corrente.\nPrevisão do mês (${formatNumber(Math.round(p.currentMonthForecastedStrokes))}) − já decorrido desde o dia 1 rateado por dias (${formatNumber(Math.round(Math.max(0, p.currentMonthForecastedStrokes - p.currentMonthRemainingToDo)))}) = ${formatNumber(p.currentMonthRemainingToDo)}.${
+                          p.hasMaintenanceInReferenceMonth ? "\n(Há manutenção neste mês: o ciclo novo começou no meio do mês.)" : ""
+                        }`}
                       >
                         {formatNumber(p.currentMonthRemainingToDo)}
                       </span>
                     </td>
                     {p.window.map((m) => (
-                      <td key={m.key} className={`px-3 py-2 text-right tabular-nums ${m.offset === 0 ? "font-medium text-blue-700" : "text-gray-700"}`}>
+                      <td
+                        key={m.key}
+                        className={`px-3 py-2 text-right tabular-nums ${m.offset === 0 ? "font-medium text-blue-700" : "text-gray-700"}`}
+                        title={`Batidas previstas em ${m.label} = Σ(volume previsto × qtd no BOM ÷ batidas por golpe) dos produtos:\n${monthBreakdownText(p, m.key)}`}
+                      >
                         {m.strokes > 0 ? formatNumber(Math.round(m.strokes)) : "—"}
                       </td>
                     ))}
-                    <td className="px-3 py-2 text-right tabular-nums font-semibold">
+                    <td className="px-3 py-2 text-right tabular-nums font-semibold" title={projetadoTitle}>
                       {formatNumber(Math.round(p.totalProjectedStrokes))}
                     </td>
                     <td
@@ -412,23 +471,32 @@ export default async function Controle50KPage({
                           ? "text-orange-600"
                           : "text-gray-900"
                       }`}
+                      title={`Saldo projetado ao fim da janela de 4 meses.\n${limit} (limite) − Projetado 4 Meses (${formatNumber(Math.round(p.totalProjectedStrokes))}) = ${formatNumber(Math.round(p.remainingStrokes))} batidas restantes.${
+                        saldoExcedente ? "\n(Exibido como excedente: sinal invertido.)" : ""
+                      }`}
                     >
                       {formatNumber(showSaldo(p.remainingStrokes))}
                     </td>
                     <td
                       className={`px-3 py-2 text-right tabular-nums font-semibold ${
-                        p.realRemainingStrokes === null
-                          ? "text-gray-400"
-                          : p.realRemainingStrokes < 0
+                        p.currentRemainingStrokes < 0
                           ? "text-red-600"
-                          : p.realRemainingStrokes < 5000
+                          : p.currentRemainingStrokes < 5000
                           ? "text-orange-600"
                           : "text-gray-900"
                       }`}
+                      title={`Saldo de hoje, sem projetar meses futuros.\n${limit} (limite) − Acúmulo Estimado atual (${formatNumber(accum)}) = ${formatNumber(Math.round(p.currentRemainingStrokes))} batidas restantes.${
+                        saldoExcedente ? "\n(Exibido como excedente: sinal invertido.)" : ""
+                      }`}
                     >
-                      {p.realRemainingStrokes !== null ? formatNumber(showSaldo(p.realRemainingStrokes)) : "—"}
+                      {formatNumber(showSaldo(p.currentRemainingStrokes))}
                     </td>
-                    <td className="px-3 py-2">
+                    <td
+                      className="px-3 py-2"
+                      title={`Status ${isRealView ? "Real" : "Estimado"}${
+                        isRealView && p.statusFromEstimate ? " (sem leitura real — caiu para o estimado)" : ""
+                      }.\nFaixas: OK < ${formatNumber(p.warningLimit - 5000)} · ATENÇÃO ${formatNumber(p.warningLimit - 5000)}–${formatNumber(p.warningLimit - 1)} · PROGRAMAR ${formatNumber(p.warningLimit)}–${formatNumber(p.preventiveLimit - 1)} · VENCIDO ≥ ${limit}.`}
+                    >
                       <div className="flex items-center gap-1">
                         <StatusBadge status={statusOf(p)} />
                         {isRealView && p.statusFromEstimate && (
@@ -441,16 +509,24 @@ export default async function Controle50KPage({
                         )}
                       </div>
                     </td>
-                    <td className="px-3 py-2 text-[10px] text-gray-600">
+                    <td
+                      className="px-3 py-2 text-[10px] text-gray-600"
+                      title={
+                        p.reachesLimitInMonth
+                          ? `Mês projetado em que o acúmulo alcança o limite de ${limit} batidas, somando mês a mês a previsão a partir do acúmulo atual (${formatNumber(accum)}).`
+                          : `Nos próximos 24 meses a projeção não alcança o limite de ${limit} batidas.`
+                      }
+                    >
                       {p.reachesLimitInMonth ?? "—"}
                     </td>
                     <td className="px-3 py-2">
-                      {(p.status === "PROGRAMAR_PREVENTIVA" || p.status === "VENCIDO") && (
+                      {(statusOf(p) === "PROGRAMAR_PREVENTIVA" || statusOf(p) === "VENCIDO") && (
                         <RegisterMaintenanceButton toolId={p.toolId} toolCode={p.code} />
                       )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

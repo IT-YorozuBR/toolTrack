@@ -110,6 +110,7 @@ model MaintenanceRecord {
   toolId               String
   maintenanceDate      DateTime
   strokesAtMaintenance Int
+  previousStrokes      Int?
   maintenanceType      String
   responsible          String?
   notes                String?

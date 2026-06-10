@@ -84,7 +84,7 @@ export function ProjectVolumeGrid({ rows, cols }: Props) {
 
     await upsertProjectForecast({
       projectId: editing.projectId,
-      referenceMonth: new Date(year, month - 1, 1),
+      referenceMonth: new Date(Date.UTC(year, month - 1, 1, 12)),
       plannedQuantity: qty,
     });
 

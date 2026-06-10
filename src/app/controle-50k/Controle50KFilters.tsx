@@ -22,6 +22,19 @@ export function Controle50KFilters({ presses, availableMonths }: Props) {
     [router, searchParams]
   );
 
+  const simulateDate = searchParams.get("simulateDate") ?? "";
+
+  // Formata uma data como YYYY-MM-DD no fuso local (sem deslocamento de UTC).
+  const toInputValue = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+  // Salta N meses a partir da data simulada atual (ou de hoje, se nenhuma).
+  const jumpMonths = (months: number) => {
+    const base = simulateDate ? new Date(`${simulateDate}T12:00:00`) : new Date();
+    base.setMonth(base.getMonth() + months);
+    updateFilter("simulateDate", toInputValue(base));
+  };
+
   return (
     <div className="flex gap-3 flex-wrap items-center">
       <select
@@ -140,6 +153,53 @@ export function Controle50KFilters({ presses, availableMonths }: Props) {
           <option value="code_desc">Ferramental Z→A</option>
         </optgroup>
       </select>
+
+      <div
+        className={`flex items-center gap-1.5 rounded-lg border px-2 py-1 ${
+          simulateDate ? "border-yellow-400 bg-yellow-50" : "border-gray-300 bg-white"
+        }`}
+        title="Simula a projeção como se hoje fosse a data escolhida"
+      >
+        <span className="text-sm text-gray-500 whitespace-nowrap pl-1">Simular data</span>
+        <input
+          type="date"
+          value={simulateDate}
+          onChange={(e) => updateFilter("simulateDate", e.target.value)}
+          className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+        />
+        <button
+          type="button"
+          onClick={() => jumpMonths(1)}
+          className="rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200"
+        >
+          +1m
+        </button>
+        <button
+          type="button"
+          onClick={() => jumpMonths(3)}
+          className="rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200"
+        >
+          +3m
+        </button>
+        <button
+          type="button"
+          onClick={() => jumpMonths(6)}
+          className="rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200"
+        >
+          +6m
+        </button>
+        {simulateDate && (
+          <button
+            type="button"
+            onClick={() => updateFilter("simulateDate", "")}
+            className="rounded-md px-1.5 py-1 text-xs font-medium text-yellow-700 hover:bg-yellow-100"
+            title="Voltar para hoje"
+            aria-label="Limpar data simulada"
+          >
+            ✕
+          </button>
+        )}
+      </div>
     </div>
   );
 }

@@ -62,10 +62,12 @@ export async function GET(request: NextRequest) {
   const minStrokesParam = sp.get("minStrokes");
   const minStrokes = minStrokesParam ? parseInt(minStrokesParam, 10) : undefined;
   const reachesMonth = sp.get("reachesMonth") ?? undefined;
-  const simulatedate = sp.get("simulatedate") ?? undefined;
+  const simulateDate = sp.get("simulateDate") ?? undefined;
   const isRealView = sp.get("statusView") !== "estimado";
 
-  const referenceDate = simulatedate ? new Date(simulatedate) : undefined;
+  const referenceDate = simulateDate
+    ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(simulateDate) ? `${simulateDate}T12:00:00` : simulateDate)
+    : undefined;
   const today = referenceDate ?? new Date();
 
   // Defaults: 12 meses atrás → 12 meses à frente, caso o gatilho não envie.
@@ -190,7 +192,7 @@ export async function GET(request: NextRequest) {
       press,
       status: statusParam as MaintenanceStatus | undefined,
       search,
-      simulatedate,
+      simulateDate,
       saldoSign: sp.get("saldoSign") ?? undefined,
       from,
       to: toRaw,
