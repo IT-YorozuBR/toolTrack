@@ -261,11 +261,14 @@ describe("Controle 50K projection", () => {
     );
 
     assert.equal(projection.latestRealReadingDate, "2026-06-01T12:00:00.000Z");
+    // Acúmulo Real = leitura crua (sem dias); Saldo Real = checkpoint da última medição.
     assert.equal(projection.realCycleStrokes, 20000);
-    assert.equal(projection.realEstimatedStrokes, 21500);
-    assert.equal(projection.realRemainingStrokes, 28500);
+    assert.equal(projection.realRemainingStrokes, 30000); // 50000 - 20000 (leitura crua)
     assert.equal(projection.realStatus, "OK");
-    // Projeção principal ancorada no acúmulo real (21500) + forecast futuro (3000), não nas batidas estimadas.
+    // O crescimento por dias agora vive no estimado: leitura (20000) + 1500 dias = 21500.
+    assert.equal(projection.realEstimatedStrokes, 21500);
+    assert.equal(projection.estimatedAccumulated, 21500);
+    // Projeção principal ancorada no acúmulo estimado (21500) + forecast futuro (3000).
     assert.equal(projection.totalProjectedStrokes, 24500);
     assert.equal(projection.remainingStrokes, 25500);
     assert.equal(projection.status, "OK");
@@ -322,6 +325,28 @@ describe("Controle 50K projection", () => {
     assert.equal(projection.realEstimatedStrokes, 47000);
     assert.equal(projection.realRemainingStrokes, 3000);
     assert.equal(projection.realStatus, "PROGRAMAR_PREVENTIVA"); // >= warningLimit (45000)
+  });
+
+  it("uses the estimated status as the effective status when there is no real reading", () => {
+    const projection = getToolProjection(makeTool(), monthDate(2026, 5, 20));
+
+    assert.equal(projection.realStatus, null);
+    assert.equal(projection.statusFromEstimate, true);
+    assert.equal(projection.effectiveStatus, projection.status);
+  });
+
+  it("uses the real status as the effective status when there is a reading", () => {
+    const projection = getToolProjection(
+      makeTool({
+        forecasts: [forecast(2026, 5, 0)],
+        strokeReadings: [{ readingDate: monthDate(2026, 5, 20), cycleStrokes: 47000 }],
+      }),
+      monthDate(2026, 5, 20),
+    );
+
+    assert.equal(projection.realStatus, "PROGRAMAR_PREVENTIVA");
+    assert.equal(projection.statusFromEstimate, false);
+    assert.equal(projection.effectiveStatus, "PROGRAMAR_PREVENTIVA");
   });
 
   it("does not mark VENCIDO from the projection alone — only programs the preventive", () => {

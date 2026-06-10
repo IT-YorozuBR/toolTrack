@@ -30,6 +30,8 @@ export type ToolProjection = {
   hasMaintenanceInReferenceMonth: boolean;
   strokesAtLastMaintenance: number | null;
   estimatedStrokes: number;
+  // Acúmulo Estimado exibido: base da projeção = leitura+dias quando há leitura, senão previsão pura.
+  estimatedAccumulated: number;
   forecastedStrokes: number;
   closedHistoricalStrokes: number;
   currentMonthForecastedStrokes: number;
@@ -43,6 +45,10 @@ export type ToolProjection = {
   realEstimatedStrokes: number | null;
   realRemainingStrokes: number | null;
   realStatus: MaintenanceStatus | null;
+  // Status efetivo = real quando há leitura, senão cai para o estimado (projeção).
+  effectiveStatus: MaintenanceStatus;
+  // true quando o effectiveStatus veio do estimado (não há leitura real no ciclo).
+  statusFromEstimate: boolean;
   preventiveLimit: number;
   warningLimit: number;
   status: MaintenanceStatus;
@@ -473,12 +479,16 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
   const realCycleStrokes = realCycle?.reading.cycleStrokes ?? null;
   const realEstimatedStrokes = realCycle?.estimated ?? null;
   const latestRealReadingDate = realCycle ? realCycle.reading.readingDate.toISOString() : null;
-  const realRemainingStrokes = realEstimatedStrokes !== null ? tool.preventiveLimit - realEstimatedStrokes : null;
+  // Acúmulo Real = leitura física crua (sem estimativa de dias). Saldo/status reais são um
+  // "checkpoint" do estado na última medição.
+  const realRemainingStrokes = realCycleStrokes !== null ? tool.preventiveLimit - realCycleStrokes : null;
 
-  // Havendo leitura real do ciclo, a projeção (Saldo 50k Estimado e mês que atinge o limite) é
-  // ancorada no acúmulo real em vez das batidas estimadas. Sem leitura, usa o estimado.
+  // Havendo leitura real do ciclo, o ESTIMADO (acúmulo vivo, saldo 50k e mês que atinge o limite) é
+  // ancorado na leitura + dias decorridos; sem leitura, usa as batidas estimadas pela previsão.
   const hasRealReading = realEstimatedStrokes !== null;
   const projectionBaseStrokes = realEstimatedStrokes ?? estimatedStrokes;
+  // Acúmulo Estimado exibido = base da projeção (leitura+dias quando há leitura; previsão caso contrário).
+  const estimatedAccumulated = projectionBaseStrokes;
 
   const totalProjectedStrokes = lastReset
     ? projectionBaseStrokes + forecastedStrokesAfterMaintenance
@@ -494,10 +504,13 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
     tool.warningLimit,
     tool.shotsPerStroke,
   );
-  // Status real: mesmos limiares, porém aplicados só ao acúmulo real (estado atual). Null sem leitura.
-  const realStatus = realEstimatedStrokes !== null
-    ? getMaintenanceStatus(0, realEstimatedStrokes, tool.preventiveLimit, tool.warningLimit, tool.shotsPerStroke)
+  // Status real: mesmos limiares, aplicados à leitura crua (checkpoint da última medição). Null sem leitura.
+  const realStatus = realCycleStrokes !== null
+    ? getMaintenanceStatus(0, realCycleStrokes, tool.preventiveLimit, tool.warningLimit, tool.shotsPerStroke)
     : null;
+  // Status efetivo: usa o real quando há leitura; caso contrário, cai para o estimado.
+  const effectiveStatus = realStatus ?? status;
+  const statusFromEstimate = realStatus === null;
   const reachesLimitInMonth = (lastReset || hasRealReading)
     ? getMonthWhenReachesLimitFromCycle(tool, projectionBaseStrokes, currentMonthRemainingToDo, referenceDate)
     : getMonthWhenReachesLimit(tool, referenceDate);
@@ -537,6 +550,7 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
     hasMaintenanceInReferenceMonth,
     strokesAtLastMaintenance: lastReset?.strokesAtMaintenance ?? null,
     estimatedStrokes,
+    estimatedAccumulated,
     forecastedStrokes,
     closedHistoricalStrokes,
     currentMonthForecastedStrokes,
@@ -550,6 +564,8 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
     realEstimatedStrokes,
     realRemainingStrokes,
     realStatus,
+    effectiveStatus,
+    statusFromEstimate,
     preventiveLimit: tool.preventiveLimit,
     warningLimit: tool.warningLimit,
     status,

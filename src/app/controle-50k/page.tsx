@@ -3,11 +3,12 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Pagination } from "@/components/ui/Pagination";
-import { getAllToolsProjection, getWindowDates } from "@/lib/calculations/strokes";
+import { getAllToolsProjection, getWindowDates, type ToolProjection } from "@/lib/calculations/strokes";
 import { autoEnsureMonthlySnapshots } from "@/lib/actions/monthly-stroke-snapshots";
 import { formatNumber } from "@/lib/utils";
 import { Controle50KFilters } from "./Controle50KFilters";
 import { RegisterMaintenanceButton } from "./RegisterMaintenanceButton";
+import { ExportButton } from "./ExportButton";
 import Link from "next/link";
 
 const PAGE_SIZE = 50;
@@ -20,13 +21,13 @@ const PT_MONTH_IDX: Record<string, number> = {
 };
 
 function sortMonthLabels(labels: string[]): string[] {
-  return labels.sort((a, b) => {
-    const [ma, ya] = a.split("/");
-    const [mb, yb] = b.split("/");
-    const da = parseInt(ya) * 12 + (PT_MONTH_IDX[ma] ?? 0);
-    const db = parseInt(yb) * 12 + (PT_MONTH_IDX[mb] ?? 0);
-    return da - db;
-  });
+  return labels.sort((a, b) => labelToOrder(a) - labelToOrder(b));
+}
+
+// "Jun/2026" → ordem comparável (ano*12 + índice do mês).
+function labelToOrder(label: string): number {
+  const [m, y] = label.split("/");
+  return parseInt(y) * 12 + (PT_MONTH_IDX[m] ?? 0);
 }
 
 function formatDate(date: string | null): string {
@@ -37,11 +38,15 @@ function formatDate(date: string | null): string {
 export default async function Controle50KPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; press?: string; search?: string; page?: string; minStrokes?: string; reachesMonth?: string; simulatedate?: string; sort?: string; statusView?: string }>;
+  searchParams: Promise<{ status?: string; press?: string; search?: string; page?: string; minStrokes?: string; reachesMonth?: string; reachesFrom?: string; reachesTo?: string; simulatedate?: string; sort?: string; statusView?: string; saldoSign?: string }>;
 }) {
   const params = await searchParams;
   // Real é o padrão; só vai para estimado quando explicitamente pedido (?statusView=estimado).
   const isRealView = params.statusView !== "estimado";
+  // Convenção do Saldo 50k: padrão = restante (limite − uso, negativo quando excede);
+  // "excedente" inverte o sinal (positivo quando excede). A cor (vermelho = ruim) não muda.
+  const saldoExcedente = params.saldoSign === "excedente";
+  const showSaldo = (remaining: number) => Math.round(saldoExcedente ? -remaining : remaining);
   const minStrokes = params.minStrokes ? parseInt(params.minStrokes) : undefined;
   const referenceDate = params.simulatedate ? new Date(params.simulatedate) : undefined;
 
@@ -102,21 +107,25 @@ export default async function Controle50KPage({
 
   const windowDates = getWindowDates(referenceDate);
 
+  // Status exibido: na visão real usa o efetivo (real, ou estimado como fallback);
+  // na visão estimado usa o status projetado puro.
+  const statusOf = (p: ToolProjection) => (isRealView ? p.effectiveStatus : p.status);
+
   // Counts are always global — all active tools, no filters
   const allProjections = getAllToolsProjection(allActiveTools, referenceDate);
   const counts = {
     total: allProjections.length,
-    ok: allProjections.filter((p) => p.status === "OK").length,
-    atencao: allProjections.filter((p) => p.status === "ATENCAO").length,
-    programar: allProjections.filter((p) => p.status === "PROGRAMAR_PREVENTIVA").length,
-    vencido: allProjections.filter((p) => p.status === "VENCIDO").length,
+    ok: allProjections.filter((p) => statusOf(p) === "OK").length,
+    atencao: allProjections.filter((p) => statusOf(p) === "ATENCAO").length,
+    programar: allProjections.filter((p) => statusOf(p) === "PROGRAMAR_PREVENTIVA").length,
+    vencido: allProjections.filter((p) => statusOf(p) === "VENCIDO").length,
   };
 
   // Filtered projections for the table
   let projections = getAllToolsProjection(tools, referenceDate);
 
   if (params.status) {
-    projections = projections.filter((p) => (isRealView ? p.realStatus : p.status) === params.status);
+    projections = projections.filter((p) => statusOf(p) === params.status);
   }
 
   // Available months derived from filtered projections (before reachesMonth filter)
@@ -126,6 +135,20 @@ export default async function Controle50KPage({
 
   if (params.reachesMonth) {
     projections = projections.filter((p) => p.reachesLimitInMonth === params.reachesMonth);
+  }
+
+  // Filtro por intervalo do mês que atinge o limite (De/Até). Ferramentais que nunca
+  // atingem (reachesLimitInMonth indefinido) ficam de fora quando há intervalo.
+  const reachesFromOrder = params.reachesFrom ? labelToOrder(params.reachesFrom) : null;
+  const reachesToOrder = params.reachesTo ? labelToOrder(params.reachesTo) : null;
+  if (reachesFromOrder !== null || reachesToOrder !== null) {
+    projections = projections.filter((p) => {
+      if (!p.reachesLimitInMonth) return false;
+      const order = labelToOrder(p.reachesLimitInMonth);
+      if (reachesFromOrder !== null && order < reachesFromOrder) return false;
+      if (reachesToOrder !== null && order > reachesToOrder) return false;
+      return true;
+    });
   }
 
   // Sem ordenação explícita, ordena pelo saldo da visão ativa (real por padrão).
@@ -146,7 +169,7 @@ export default async function Controle50KPage({
       case "real_desc":     return compareRealRemaining(a, b, false);
       case "code_asc":      return a.code.localeCompare(b.code);
       case "code_desc":     return b.code.localeCompare(a.code);
-      case "estimado_desc": return b.estimatedStrokes - a.estimatedStrokes;
+      case "estimado_desc": return b.estimatedAccumulated - a.estimatedAccumulated;
       default:              return a.remainingStrokes - b.remainingStrokes; // saldo_asc
     }
   });
@@ -165,9 +188,12 @@ export default async function Controle50KPage({
     if (params.search) urlParams.set("search", params.search);
     if (params.minStrokes) urlParams.set("minStrokes", params.minStrokes);
     if (params.reachesMonth) urlParams.set("reachesMonth", params.reachesMonth);
+    if (params.reachesFrom) urlParams.set("reachesFrom", params.reachesFrom);
+    if (params.reachesTo) urlParams.set("reachesTo", params.reachesTo);
     if (params.simulatedate) urlParams.set("simulatedate", params.simulatedate);
     if (params.sort) urlParams.set("sort", params.sort);
     if (params.statusView) urlParams.set("statusView", params.statusView);
+    if (params.saldoSign) urlParams.set("saldoSign", params.saldoSign);
     urlParams.set("page", String(p));
     return `/controle-50k?${urlParams.toString()}`;
   }
@@ -180,8 +206,11 @@ export default async function Controle50KPage({
     if (params.search) urlParams.set("search", params.search);
     if (params.minStrokes) urlParams.set("minStrokes", params.minStrokes);
     if (params.reachesMonth) urlParams.set("reachesMonth", params.reachesMonth);
+    if (params.reachesFrom) urlParams.set("reachesFrom", params.reachesFrom);
+    if (params.reachesTo) urlParams.set("reachesTo", params.reachesTo);
     if (params.simulatedate) urlParams.set("simulatedate", params.simulatedate);
     if (params.sort) urlParams.set("sort", params.sort);
+    if (params.saldoSign) urlParams.set("saldoSign", params.saldoSign);
     // Real é o padrão (sem param). Estando em real, o toggle leva para estimado; estando em estimado, volta ao padrão.
     if (isRealView) urlParams.set("statusView", "estimado");
     const qs = urlParams.toString();
@@ -200,12 +229,15 @@ export default async function Controle50KPage({
         title="Controle 50K"
         description="Previsão de batidas e controle preventivo de ferramentais"
         action={
-          <Link
-            href="/manutencoes/nova"
-            className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700"
-          >
-            + Registrar Manutenção
-          </Link>
+          <div className="flex items-center gap-3">
+            <ExportButton />
+            <Link
+              href="/manutencoes/nova"
+              className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700"
+            >
+              + Registrar Manutenção
+            </Link>
+          </div>
         }
       />
 
@@ -246,8 +278,8 @@ export default async function Controle50KPage({
                   <th className="w-[8.5%] px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">
                     Últ. manut.
                   </th>
-                  <th className="w-[8.5%] px-3 py-2 text-right text-[10px] font-medium text-gray-500 uppercase">
-                    Batidas Estimadas Mensal
+                  <th className="w-[8.5%] px-3 py-2 text-right text-[10px] font-medium text-purple-600 uppercase">
+                    Acúmulo Estimado
                   </th>
                   <th className="w-[8%] px-3 py-2 text-right text-[10px] font-medium text-blue-600 uppercase">
                     Acúmulo Real
@@ -297,11 +329,11 @@ export default async function Controle50KPage({
                   <tr
                     key={p.toolId}
                     className={`hover:bg-gray-50 ${
-                      (isRealView ? p.realStatus : p.status) === "VENCIDO"
+                      statusOf(p) === "VENCIDO"
                         ? "bg-red-50"
-                        : (isRealView ? p.realStatus : p.status) === "PROGRAMAR_PREVENTIVA"
+                        : statusOf(p) === "PROGRAMAR_PREVENTIVA"
                         ? "bg-orange-50"
-                        : (isRealView ? p.realStatus : p.status) === "ATENCAO"
+                        : statusOf(p) === "ATENCAO"
                         ? "bg-yellow-50"
                         : ""
                     }`}
@@ -325,28 +357,28 @@ export default async function Controle50KPage({
                         className={
                           p.hasMaintenanceInReferenceMonth
                             ? "inline-flex min-w-14 justify-end rounded bg-blue-50 px-1.5 py-0.5 font-semibold text-blue-800 ring-1 ring-blue-200"
-                            : ""
+                            : "font-medium text-purple-600"
                         }
                         title={
-                          p.hasMaintenanceInReferenceMonth
-                            ? "Ferramental com manutenção registrada no mês de referência"
-                            : undefined
+                          p.realCycleStrokes !== null
+                            ? `${formatNumber(p.realCycleStrokes)} medido (leitura de ${formatDate(p.latestRealReadingDate)}) + ${formatNumber(Math.round(p.estimatedAccumulated - p.realCycleStrokes))} estimado pelos dias = ${formatNumber(Math.round(p.estimatedAccumulated))}`
+                            : "Estimado pela previsão (sem leitura real neste ciclo)"
                         }
                       >
-                        {formatNumber(p.estimatedStrokes)}
+                        {formatNumber(Math.round(p.estimatedAccumulated))}
                       </span>
                     </td>
                     <td
                       className={`px-3 py-2 text-right tabular-nums ${
-                        p.realEstimatedStrokes !== null ? "font-medium text-blue-600" : "text-gray-400"
+                        p.realCycleStrokes !== null ? "font-medium text-blue-600" : "text-gray-400"
                       }`}
                       title={
-                        p.realEstimatedStrokes !== null && p.realCycleStrokes !== null
-                          ? `${formatNumber(p.realCycleStrokes)} batidas registradas (leitura de ${formatDate(p.latestRealReadingDate)}) + ${formatNumber(Math.round(p.realEstimatedStrokes - p.realCycleStrokes))} estimadas pelos dias = ${formatNumber(Math.round(p.realEstimatedStrokes))}`
+                        p.realCycleStrokes !== null
+                          ? `Última leitura: ${formatNumber(p.realCycleStrokes)} batidas em ${formatDate(p.latestRealReadingDate)}`
                           : "Sem leitura real registrada neste ciclo"
                       }
                     >
-                      {p.realEstimatedStrokes !== null ? formatNumber(Math.round(p.realEstimatedStrokes)) : "—"}
+                      {p.realCycleStrokes !== null ? formatNumber(p.realCycleStrokes) : "—"}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
                       <span
@@ -381,7 +413,7 @@ export default async function Controle50KPage({
                           : "text-gray-900"
                       }`}
                     >
-                      {formatNumber(Math.round(p.remainingStrokes))}
+                      {formatNumber(showSaldo(p.remainingStrokes))}
                     </td>
                     <td
                       className={`px-3 py-2 text-right tabular-nums font-semibold ${
@@ -394,20 +426,20 @@ export default async function Controle50KPage({
                           : "text-gray-900"
                       }`}
                     >
-                      {p.realRemainingStrokes !== null ? formatNumber(Math.round(p.realRemainingStrokes)) : "—"}
+                      {p.realRemainingStrokes !== null ? formatNumber(showSaldo(p.realRemainingStrokes)) : "—"}
                     </td>
                     <td className="px-3 py-2">
-                      {isRealView ? (
-                        p.realStatus ? (
-                          <StatusBadge status={p.realStatus} />
-                        ) : (
-                          <span className="text-[10px] text-gray-400" title="Sem leitura real registrada neste ciclo">
-                            sem leitura
+                      <div className="flex items-center gap-1">
+                        <StatusBadge status={statusOf(p)} />
+                        {isRealView && p.statusFromEstimate && (
+                          <span
+                            className="text-[9px] font-medium text-gray-400"
+                            title="Sem leitura real neste ciclo — status estimado pela previsão"
+                          >
+                            est.
                           </span>
-                        )
-                      ) : (
-                        <StatusBadge status={p.status} />
-                      )}
+                        )}
+                      </div>
                     </td>
                     <td className="px-3 py-2 text-[10px] text-gray-600">
                       {p.reachesLimitInMonth ?? "—"}

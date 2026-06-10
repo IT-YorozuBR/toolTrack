@@ -59,6 +59,33 @@ export function Controle50KFilters({ presses, availableMonths }: Props) {
         ))}
       </select>
 
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-gray-500 whitespace-nowrap">Atinge entre</span>
+        <select
+          aria-label="Atinge limite a partir de"
+          value={searchParams.get("reachesFrom") ?? ""}
+          onChange={(e) => updateFilter("reachesFrom", e.target.value)}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+        >
+          <option value="">início</option>
+          {availableMonths.map((m) => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select>
+        <span className="text-sm text-gray-500">e</span>
+        <select
+          aria-label="Atinge limite até"
+          value={searchParams.get("reachesTo") ?? ""}
+          onChange={(e) => updateFilter("reachesTo", e.target.value)}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+        >
+          <option value="">fim</option>
+          {availableMonths.map((m) => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select>
+      </div>
+
       {/* <div className="flex items-center gap-2">
         <span className="text-sm text-gray-500 whitespace-nowrap">Batidas ≥</span>
         <input
@@ -84,6 +111,16 @@ export function Controle50KFilters({ presses, availableMonths }: Props) {
         }}
         className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-48"
       />
+
+      <select
+        value={searchParams.get("saldoSign") ?? ""}
+        onChange={(e) => updateFilter("saldoSign", e.target.value)}
+        className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+        title="Como exibir o Saldo 50k quando o ferramental ultrapassa o limite"
+      >
+        <option value="">Saldo restante (limite − uso)</option>
+        <option value="excedente">Saldo excedente (uso − limite)</option>
+      </select>
 
       <select
         value={searchParams.get("sort") ?? (searchParams.get("statusView") !== "estimado" ? "real_asc" : "saldo_asc")}
