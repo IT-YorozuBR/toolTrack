@@ -287,6 +287,18 @@ export default async function Controle50KPage({
         ))}
       </div>
 
+      {/* Legenda dos marcadores da tabela */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-4 text-[11px] text-gray-500">
+        <span className="inline-flex items-center gap-1">
+          <span className="rounded bg-indigo-100 px-1 py-0.5 text-[9px] font-semibold text-indigo-700 ring-1 ring-indigo-300">🔧</span>
+          ciclo reiniciado nos últimos 30 dias (acúmulo ainda parcial)
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold text-amber-700 ring-1 ring-amber-300">⚠ Nd</span>
+          leitura física defasada há N dias (acúmulo real pode subcontar)
+        </span>
+      </div>
+
       <Controle50KFilters presses={allPresses.map((p) => p.press)} availableMonths={availableMonths} />
 
       {projections.length === 0 ? (
@@ -399,18 +411,22 @@ export default async function Controle50KPage({
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
                       <span
-                        className={
-                          p.hasMaintenanceInReferenceMonth
-                            ? "inline-flex min-w-14 justify-end rounded bg-blue-50 px-1.5 py-0.5 font-semibold text-blue-800 ring-1 ring-blue-200"
-                            : "font-medium text-purple-600"
-                        }
+                        className="inline-flex items-center justify-end gap-1 font-medium text-purple-600"
                         title={
                           p.realCycleStrokes !== null
                             ? `Acúmulo Estimado (ancorado na leitura real):\nleitura ${formatNumber(p.realCycleStrokes)} (em ${formatDate(p.latestRealReadingDate)}) + ${formatNumber(accum - p.realCycleStrokes)} estimado pelos dias decorridos = ${formatNumber(accum)} batidas no ciclo.`
                             : `Acúmulo Estimado desde a última manutenção (sem leitura física neste ciclo).\nFórmula: meses fechados (volume × qtd no BOM ÷ batidas por golpe) + parte já decorrida do mês atual rateada por dias = ${formatNumber(accum)} batidas.`
                         }
                       >
-                        {formatNumber(accum)}
+                        {p.cycleRecentlyReset && (
+                          <span
+                            className="rounded bg-indigo-100 px-1 py-0.5 text-[9px] font-semibold text-indigo-700 ring-1 ring-indigo-300"
+                            title={`Ciclo reiniciado há ${p.daysSinceReset} dia(s) — acúmulo parcial do novo ciclo (conta poucos dias).`}
+                          >
+                            🔧
+                          </span>
+                        )}
+                        <span>{formatNumber(accum)}</span>
                       </span>
                     </td>
                     <td
@@ -437,13 +453,8 @@ export default async function Controle50KPage({
                         <span>{p.realCycleStrokes !== null ? formatNumber(p.realCycleStrokes) : "—"}</span>
                       </div>
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
+                    <td className="px-3 py-2 text-right tabular-nums text-gray-700">
                       <span
-                        className={
-                          p.hasMaintenanceInReferenceMonth
-                            ? "inline-flex min-w-14 justify-end rounded bg-green-50 px-1.5 py-0.5 font-semibold text-green-800 ring-1 ring-green-200"
-                            : "text-gray-700"
-                        }
                         title={`Batidas que ainda faltam produzir no mês corrente.\nPrevisão do mês (${formatNumber(Math.round(p.currentMonthForecastedStrokes))}) − já decorrido desde o dia 1 rateado por dias (${formatNumber(Math.round(Math.max(0, p.currentMonthForecastedStrokes - p.currentMonthRemainingToDo)))}) = ${formatNumber(p.currentMonthRemainingToDo)}.${
                           p.hasMaintenanceInReferenceMonth ? "\n(Há manutenção neste mês: o ciclo novo começou no meio do mês.)" : ""
                         }`}

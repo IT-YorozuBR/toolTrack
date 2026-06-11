@@ -97,6 +97,8 @@ export async function toggleToolActive(id: string, active: boolean) {
   try {
     await prisma.tool.update({ where: { id }, data: { active } });
     revalidatePath("/ferramentais");
+    revalidatePath("/controle-50k");
+    revalidatePath("/dashboard");
     return { success: true };
   } catch {
     return { success: false, error: "Erro ao alterar status do ferramental." };

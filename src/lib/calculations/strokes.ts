@@ -28,6 +28,9 @@ export type ToolProjection = {
   currentStrokes: number;
   lastMaintenanceDate: string | null;
   hasMaintenanceInReferenceMonth: boolean;
+  // Dias desde o último reset (null sem reset). cycleRecentlyReset = reset há <= RECENT_RESET_DAYS.
+  daysSinceReset: number | null;
+  cycleRecentlyReset: boolean;
   strokesAtLastMaintenance: number | null;
   estimatedStrokes: number;
   // Acúmulo Estimado exibido: base da projeção = leitura+dias quando há leitura, senão previsão pura.
@@ -126,6 +129,12 @@ type ToolWithRelations = {
 // passa a depender só da estimativa (que pode subcontar se a produção real >
 // prevista). Usado para sinalizar na UI que é hora de uma nova medição.
 export const STALE_READING_DAYS = 30;
+
+// Dentro desta janela após o reset, o ciclo é considerado "recém-reiniciado": o
+// Acúmulo Estimado ainda é parcial (conta poucos dias), então marcamos o número
+// para não ser lido como "rodou pouco". Baseado na recência real do reset — não
+// no mês civil — então o sinal sobrevive à virada de mês.
+export const RECENT_RESET_DAYS = 30;
 
 const PT_MONTHS = [
   "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
@@ -463,6 +472,10 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
   const currentMonthForecastedStrokes = window.find((m) => m.offset === 0)?.strokes ?? 0;
   const lastReset = getLastReset(tool);
   const hasMaintenanceInReferenceMonth = lastReset ? isSameMonth(lastReset.maintenanceDate, today) : false;
+  const daysSinceReset = lastReset
+    ? Math.floor((today.getTime() - lastReset.maintenanceDate.getTime()) / 86_400_000)
+    : null;
+  const cycleRecentlyReset = daysSinceReset !== null && daysSinceReset >= 0 && daysSinceReset <= RECENT_RESET_DAYS;
   const hasMonthlySnapshots = !!tool.monthlySnapshots?.length;
   const closedHistoricalStrokes = hasMonthlySnapshots
     ? getClosedHistoricalStrokes(tool, lastReset, today)
@@ -574,6 +587,8 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
     currentStrokes: tool.currentStrokes,
     lastMaintenanceDate: lastReset?.maintenanceDate.toISOString() ?? null,
     hasMaintenanceInReferenceMonth,
+    daysSinceReset,
+    cycleRecentlyReset,
     strokesAtLastMaintenance: lastReset?.strokesAtMaintenance ?? null,
     estimatedStrokes,
     estimatedAccumulated,

@@ -39,6 +39,7 @@ export async function upsertProjectForecast(data: {
 
     revalidatePath("/volumes");
     revalidatePath("/controle-50k");
+    revalidatePath("/dashboard");
     return { success: true };
   } catch {
     return { success: false, error: "Erro ao salvar volume do projeto." };

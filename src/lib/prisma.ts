@@ -6,9 +6,25 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+// The explicit `ssl` option below governs TLS behavior. The `sslmode` query
+// param in the Neon URL is redundant and makes pg-connection-string emit a
+// deprecation warning (require/prefer/verify-ca semantics change in pg v9),
+// so we strip it before handing the string to the Pool.
+function getConnectionString() {
+  const raw = process.env.DATABASE_URL;
+  if (!raw) return raw;
+  try {
+    const url = new URL(raw);
+    url.searchParams.delete("sslmode");
+    return url.toString();
+  } catch {
+    return raw;
+  }
+}
+
 function createPrismaClient() {
   const pool = new pg.Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: getConnectionString(),
     ssl: { rejectUnauthorized: false },
   });
   const adapter = new PrismaPg(pool);

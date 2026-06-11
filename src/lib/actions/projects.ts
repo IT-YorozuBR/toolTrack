@@ -6,6 +6,7 @@ export async function createProject(data: { name: string; description?: string }
   try {
     const project = await prisma.project.create({ data });
     revalidatePath("/projetos");
+    revalidatePath("/dashboard");
     return { success: true, data: project };
   } catch (error: unknown) {
     const e = error as { code?: string };
@@ -21,6 +22,7 @@ export async function updateProject(
   try {
     const project = await prisma.project.update({ where: { id }, data });
     revalidatePath("/projetos");
+    revalidatePath("/dashboard");
     return { success: true, data: project };
   } catch (error: unknown) {
     const e = error as { code?: string };
@@ -33,6 +35,8 @@ export async function toggleProjectActive(id: string, active: boolean) {
   try {
     await prisma.project.update({ where: { id }, data: { active } });
     revalidatePath("/projetos");
+    revalidatePath("/controle-50k");
+    revalidatePath("/dashboard");
     return { success: true };
   } catch {
     return { success: false, error: "Erro ao alterar status do projeto." };

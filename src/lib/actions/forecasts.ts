@@ -39,6 +39,7 @@ export async function upsertProductionForecast(data: {
 
     revalidatePath("/volumes");
     revalidatePath("/controle-50k");
+    revalidatePath("/dashboard");
     return { success: true };
   } catch {
     return { success: false, error: "Erro ao salvar volume." };
@@ -54,6 +55,7 @@ export async function createProductionForecast(data: { productId: string; refere
     const forecast = await prisma.productionForecast.create({ data, include: { product: true } });
     revalidatePath("/volumes");
     revalidatePath("/controle-50k");
+    revalidatePath("/dashboard");
     return { success: true, data: forecast };
   } catch {
     return { success: false, error: "Erro ao criar previsão de volume." };
@@ -65,6 +67,7 @@ export async function updateProductionForecast(id: string, data: { plannedQuanti
     const forecast = await prisma.productionForecast.update({ where: { id }, data, include: { product: true } });
     revalidatePath("/volumes");
     revalidatePath("/controle-50k");
+    revalidatePath("/dashboard");
     return { success: true, data: forecast };
   } catch {
     return { success: false, error: "Erro ao atualizar previsão de volume." };
@@ -76,6 +79,7 @@ export async function deleteProductionForecast(id: string) {
     await prisma.productionForecast.delete({ where: { id } });
     revalidatePath("/volumes");
     revalidatePath("/controle-50k");
+    revalidatePath("/dashboard");
     return { success: true };
   } catch {
     return { success: false, error: "Erro ao excluir previsão de volume." };

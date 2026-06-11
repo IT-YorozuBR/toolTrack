@@ -362,4 +362,5 @@ export async function updateSnapshotActualStrokes(
   });
   revalidatePath("/controle-50k");
   revalidatePath("/fechamento-mensal");
+  revalidatePath("/dashboard");
 }

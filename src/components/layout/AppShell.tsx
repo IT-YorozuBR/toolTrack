@@ -52,7 +52,7 @@ const navGroups: NavGroup[] = [
     items: [
       { href: "/manutencoes", label: "Manutenções", icon: Settings },
       { href: "/leituras", label: "Leituras de Batidas", icon: Activity },
-      { href: "/fechamento-mensal", label: "Fechamento Mensal", icon: CalendarCheck },
+      // { href: "/fechamento-mensal", label: "Fechamento Mensal", icon: CalendarCheck },
     ],
   },
   {

@@ -52,6 +52,7 @@ export async function upsertProductWithBom(
     revalidatePath("/produtos");
     revalidatePath("/bom");
     revalidatePath("/controle-50k");
+    revalidatePath("/dashboard");
     return { success: true };
   } catch (error: unknown) {
     const e = error as { code?: string };
@@ -64,6 +65,7 @@ export async function createProduct(data: { code: string; modelo?: string; descr
   try {
     const product = await prisma.product.create({ data });
     revalidatePath("/produtos");
+    revalidatePath("/dashboard");
     return { success: true, data: product };
   } catch (error: unknown) {
     const e = error as { code?: string };
@@ -79,6 +81,7 @@ export async function updateProduct(
   try {
     const product = await prisma.product.update({ where: { id }, data });
     revalidatePath("/produtos");
+    revalidatePath("/dashboard");
     return { success: true, data: product };
   } catch (error: unknown) {
     const e = error as { code?: string };
@@ -92,6 +95,8 @@ export async function deactivateProduct(id: string) {
   try {
     await prisma.product.update({ where: { id }, data: { active: false } });
     revalidatePath("/produtos");
+    revalidatePath("/controle-50k");
+    revalidatePath("/dashboard");
     return { success: true };
   } catch {
     return { success: false, error: "Erro ao desativar produto." };
@@ -102,6 +107,8 @@ export async function toggleProductActive(id: string, active: boolean) {
   try {
     await prisma.product.update({ where: { id }, data: { active } });
     revalidatePath("/produtos");
+    revalidatePath("/controle-50k");
+    revalidatePath("/dashboard");
     return { success: true };
   } catch {
     return { success: false, error: "Erro ao alterar status do produto." };

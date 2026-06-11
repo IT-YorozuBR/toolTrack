@@ -11,6 +11,7 @@ export async function createBomItem(data: { productId: string; toolId: string; q
     const item = await prisma.bomItem.create({ data, include: { product: true, tool: true } });
     revalidatePath("/bom");
     revalidatePath("/controle-50k");
+    revalidatePath("/dashboard");
     return { success: true, data: item };
   } catch (error: unknown) {
     const e = error as { code?: string };
@@ -24,6 +25,7 @@ export async function updateBomItem(id: string, data: { quantityUsed: number }) 
     const item = await prisma.bomItem.update({ where: { id }, data, include: { product: true, tool: true } });
     revalidatePath("/bom");
     revalidatePath("/controle-50k");
+    revalidatePath("/dashboard");
     return { success: true, data: item };
   } catch {
     return { success: false, error: "Erro ao atualizar item do BOM." };
@@ -35,6 +37,7 @@ export async function deleteBomItem(id: string) {
     await prisma.bomItem.delete({ where: { id } });
     revalidatePath("/bom");
     revalidatePath("/controle-50k");
+    revalidatePath("/dashboard");
     return { success: true };
   } catch {
     return { success: false, error: "Erro ao excluir item do BOM." };

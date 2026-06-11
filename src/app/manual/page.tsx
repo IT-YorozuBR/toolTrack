@@ -76,21 +76,22 @@ const TOC = [
   { id: "estimado-real", label: "Estimado × Real" },
   { id: "status", label: "Status e cores" },
   { id: "controle-50k", label: "A tela Controle 50K" },
+  { id: "recursos", label: "Sinais e ferramentas da tela" },
   { id: "telas", label: "Telas do sistema" },
   { id: "fluxo", label: "Fluxo de trabalho" },
 ];
 
 const COLUMNS = [
-  { name: "Ferramental", desc: "Código e descrição. Clique no ▶ para abrir o detalhamento por produto." },
+  { name: "Ferramental", desc: "Código e descrição da ferramenta. O detalhamento por produto aparece ao passar o mouse sobre as células de cada mês." },
   { name: "Últ. manut.", desc: "Data da última manutenção com reset do contador (início do ciclo 50K atual)." },
-  { name: "Batidas Estimadas", desc: "Acúmulo estimado pelo forecast desde a última manutenção até hoje." },
-  { name: "Acúmulo Real", desc: "Acúmulo real baseado na última leitura registrada + crescimento pela estimativa diária. Mostra “—” quando não há leitura no ciclo.", highlight: true },
-  { name: "Restante mês", desc: "Quanto ainda falta produzir no mês corrente (previsão do mês − o que já decorreu)." },
-  { name: "N-1 / N / N+1 / N+2", desc: "Previsão de batidas mês a mês (janela de 4 meses a partir do mês atual)." },
-  { name: "Projetado 4 Meses", desc: "Acúmulo (real, se houver leitura) somado à previsão dos próximos meses." },
-  { name: "Saldo 50k Estimado", desc: "50.000 − Projetado. Quanto ainda “sobra” até o limite, considerando a projeção futura." },
-  { name: "Saldo 50k Real", desc: "50.000 − Acúmulo Real. O saldo do estado atual, sem somar previsão futura.", highlight: true },
-  { name: "Status", desc: "Situação do ferramental. A setinha ⇄ no cabeçalho alterna entre Estimado e Real.", highlight: true },
+  { name: "Acúmulo Estimado", desc: "Base viva da projeção: havendo leitura no ciclo, parte da leitura real e cresce pela estimativa diária; sem leitura, usa a previsão de volume pura. O marcador 🔧 indica ciclo reiniciado há pouco (acúmulo ainda parcial).", highlight: true },
+  { name: "Acúmulo Real", desc: "Leitura física crua do contador no ciclo (checkpoint da última medição, sem crescimento diário). Mostra “—” quando não há leitura. O marcador ⚠ Nd indica leitura defasada há N dias.", highlight: true },
+  { name: "Restante mês", desc: "Quanto ainda falta produzir no mês corrente (previsão do mês − o que já decorreu, rateado por dias)." },
+  { name: "N-1 / N / N+1 / N+2", desc: "Previsão de batidas mês a mês (janela de 4 meses a partir do mês atual). Passe o mouse para ver de quais produtos vêm as batidas." },
+  { name: "Projetado 4 Meses", desc: "Acúmulo Estimado atual somado ao que falta no mês e à previsão dos próximos meses da janela." },
+  { name: "Saldo 50k Estimado 4 Meses", desc: "50.000 − Projetado 4 Meses. Quanto ainda “sobra” até o limite, considerando a projeção futura." },
+  { name: "Saldo 50k Atual", desc: "50.000 − Acúmulo Estimado atual. O saldo do estado de hoje, sem somar previsão futura.", highlight: true },
+  { name: "Status", desc: "Situação do ferramental. A setinha ⇄ no cabeçalho alterna entre Real (padrão) e Estimado.", highlight: true },
   { name: "Atinge", desc: "Mês em que a projeção (ancorada no real, quando existe) cruza o limite de 50.000." },
   { name: "Ação", desc: "Botão de registrar manutenção para itens em Programar Preventiva ou Vencido." },
 ];
@@ -129,7 +130,7 @@ export default function ManualPage() {
         </p>
         <div className="mt-6 flex flex-wrap gap-2">
           <Pill color="bg-white/10 text-white ring-1 ring-white/20">Limite preventivo: 50.000</Pill>
-          <Pill color="bg-white/10 text-white ring-1 ring-white/20">Aviso: 45.000</Pill>
+          <Pill color="bg-white/10 text-white ring-1 ring-white/20">Aviso: 40.000</Pill>
           <Pill color="bg-white/10 text-white ring-1 ring-white/20">Janela de projeção: 4 meses</Pill>
         </div>
       </div>
@@ -256,42 +257,46 @@ export default function ManualPage() {
             para usar bem o Controle 50K.
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Card className="border-gray-300">
+            <Card className="border-purple-300 ring-1 ring-purple-100">
               <div className="flex items-center gap-2">
                 <span className="text-xl">📐</span>
-                <h3 className="font-semibold text-gray-900">Estimado (forecast)</h3>
+                <h3 className="font-semibold text-purple-700">Acúmulo Estimado (base da projeção)</h3>
               </div>
               <p className="mt-2 text-sm text-gray-600">
-                Calculado a partir das <strong>previsões de volume</strong>. Sempre existe, mesmo sem
-                nenhuma leitura. É o palpite do sistema sobre quantas batidas a ferramenta acumulou e
-                vai acumular.
+                É a coluna que <strong>alimenta a projeção</strong>, o saldo e o status. Quando existe
+                leitura no ciclo, ela <strong>parte da leitura real e cresce</strong> pela estimativa
+                diária até hoje. Sem leitura, cai para a <strong>previsão de volume pura</strong>.
+                Sempre existe.
               </p>
             </Card>
             <Card className="border-blue-300 ring-1 ring-blue-100">
               <div className="flex items-center gap-2">
                 <span className="text-xl">🎯</span>
-                <h3 className="font-semibold text-blue-700">Real (leitura do contador)</h3>
+                <h3 className="font-semibold text-blue-700">Acúmulo Real (leitura do contador)</h3>
               </div>
               <p className="mt-2 text-sm text-gray-600">
-                Ancorado na <strong>última leitura registrada</strong> na tela de Leituras de Batidas.
-                Entre uma leitura e outra, ele <strong>cresce sozinho</strong> pela estimativa diária —
-                até a próxima leitura corrigir.
+                É a <strong>leitura física crua</strong> registrada na tela de Leituras de Batidas,
+                <strong> sem nenhum crescimento adicionado</strong>. Funciona como um checkpoint do
+                estado real na última medição. Mostra <strong>“—”</strong> enquanto não houver leitura
+                no ciclo.
               </p>
             </Card>
           </div>
           <div className="mt-4 space-y-3">
-            <Callout tone="blue" title="Acúmulo Real = leitura registrada + crescimento diário">
-              Se você registrou 30.000 batidas há 5 dias e a previsão é de ~300 batidas/dia, o Acúmulo
-              Real hoje mostra ~31.500. Passe o mouse na coluna para ver o detalhamento.
+            <Callout tone="blue" title="O Estimado ancora no Real quando há leitura">
+              Você registrou 30.000 batidas há 5 dias e a previsão é de ~300 batidas/dia: o
+              <strong> Acúmulo Estimado</strong> hoje mostra ~31.500 (leitura + dias decorridos),
+              enquanto o <strong>Acúmulo Real</strong> continua em 30.000 (a medição crua). Passe o
+              mouse nas colunas para ver o detalhamento.
             </Callout>
-            <Callout tone="green" title="A projeção usa o real quando existe">
-              Saldo 50k Estimado e a coluna “Atinge” partem do <strong>acúmulo real</strong> quando há
-              leitura no ciclo; sem leitura, usam as <strong>batidas estimadas</strong> como fallback —
-              então o planejamento nunca fica sem base.
+            <Callout tone="green" title="Status e saldo usam o real quando existe">
+              O <strong>Status</strong> (padrão Real), o <strong>Saldo 50k</strong> e a coluna
+              <strong> “Atinge”</strong> partem da leitura real quando há medição no ciclo; sem leitura,
+              caem para o estimado (com um marcador <em>est.</em>) — então o planejamento nunca fica sem base.
             </Callout>
             <Callout tone="yellow" title="Após uma manutenção com reset">
               O Acúmulo Real volta para “—” até você registrar uma nova leitura no ciclo novo. Nesse
-              intervalo, a projeção usa o estimado.
+              intervalo, status e projeção usam o estimado, que recomeça do zero a partir da data do reset.
             </Callout>
           </div>
         </Section>
@@ -322,10 +327,16 @@ export default function ManualPage() {
               <strong> não aparece como Vencido</strong> — ela fica em <em>Programar Preventiva</em>.
               “Vencido” é reservado para quem realmente já estourou o limite.
             </Callout>
-            <Callout tone="blue" title="Alternar Estimado ⇄ Real">
-              No cabeçalho da coluna <strong>Status</strong> há uma setinha <span className="font-mono">⇄</span>.
-              Clique para alternar entre o status calculado pela projeção (Estimado) e o status do
-              acúmulo real (Real). A cor de fundo das linhas acompanha o modo selecionado.
+            <Callout tone="blue" title="Status Real é o padrão — alterne com ⇄">
+              A coluna <strong>Status</strong> mostra por padrão o status <strong>Real</strong> (baseado
+              na leitura crua do contador). A setinha <span className="font-mono">⇄</span> no cabeçalho
+              alterna para o status <strong>Estimado</strong> (calculado pela projeção). A cor de fundo
+              das linhas acompanha o modo selecionado.
+            </Callout>
+            <Callout tone="green" title="Sem leitura, o Real cai para o estimado">
+              Quando um ferramental ainda não tem leitura no ciclo, a visão Real exibe o status
+              estimado com um marcador <strong>est.</strong> ao lado — sinal de que aquele status veio
+              da previsão, não de uma medição física.
             </Callout>
           </div>
         </Section>
@@ -348,7 +359,7 @@ export default function ManualPage() {
                   <tr key={c.name} className={c.highlight ? "bg-blue-50/40" : ""}>
                     <td className="whitespace-nowrap px-5 py-3 align-top font-medium text-gray-900">
                       {c.name}
-                      {c.highlight && <span className="ml-2 align-middle text-[10px] font-semibold text-blue-600">REAL</span>}
+                      {c.highlight && <span className="ml-2 align-middle text-[10px] font-semibold text-blue-600">CHAVE</span>}
                     </td>
                     <td className="px-5 py-3 text-gray-600">{c.desc}</td>
                   </tr>
@@ -360,17 +371,65 @@ export default function ManualPage() {
             <Card>
               <h3 className="font-semibold text-gray-900">Filtros e ordenação</h3>
               <p className="mt-2 text-sm text-gray-600">
-                Filtre por status, por mês em que atinge o limite e por busca de código. A ordenação é
-                separada em grupos: <strong>Saldo Estimado</strong> (crescente/decrescente),
-                <strong> Saldo Real</strong> (crescente/decrescente) e <strong>Ferramental</strong> (A→Z/Z→A).
-                Itens sem leitura real vão sempre para o fim quando ordenado por real.
+                Filtre por status, por mês em que atinge o limite (mês único ou intervalo
+                <strong> Atinge entre</strong> De/Até) e por busca de código. A ordenação é separada em
+                grupos: <strong>Saldo 50k Estimado</strong>, <strong>Saldo 50k Real</strong> e
+                <strong> Ferramental</strong> (A→Z/Z→A). Itens sem leitura real vão para o fim quando
+                ordenado por real.
               </p>
             </Card>
             <Card>
               <h3 className="font-semibold text-gray-900">Detalhamento por produto</h3>
               <p className="mt-2 text-sm text-gray-600">
-                Clique no <span className="font-mono">▶</span> ao lado do código para expandir e ver
-                quanto cada produto contribui de batidas, mês a mês.
+                Passe o mouse sobre as células de cada mês (e sobre o <strong>Acúmulo</strong>) para ver
+                quanto cada produto contribui de batidas. O detalhamento agora aparece em tooltips, sem
+                precisar expandir a linha.
+              </p>
+            </Card>
+          </div>
+        </Section>
+
+        {/* Recursos da tela */}
+        <Section id="recursos" eyebrow="Mão na massa" title="Sinais e ferramentas da tela">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Card>
+              <h3 className="font-semibold text-gray-900">Marcadores na tabela</h3>
+              <div className="mt-3 space-y-2 text-sm text-gray-600">
+                <p className="flex items-start gap-2">
+                  <span className="mt-0.5 rounded bg-indigo-100 px-1 py-0.5 text-[10px] font-semibold text-indigo-700 ring-1 ring-indigo-300">🔧</span>
+                  Ciclo reiniciado nos <strong>últimos 30 dias</strong> — o Acúmulo Estimado ainda é
+                  parcial (conta poucos dias do novo ciclo).
+                </p>
+                <p className="flex items-start gap-2">
+                  <span className="mt-0.5 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-semibold text-amber-700 ring-1 ring-amber-300">⚠ Nd</span>
+                  Leitura física <strong>defasada há N dias</strong> (mais de 30): o Acúmulo Real pode
+                  estar subcontando — registre uma nova leitura.
+                </p>
+              </div>
+            </Card>
+            <Card>
+              <h3 className="font-semibold text-gray-900">Saldo: restante × excedente</h3>
+              <p className="mt-3 text-sm text-gray-600">
+                Por padrão o Saldo 50k aparece como <strong>restante</strong> (limite − uso, fica
+                negativo quando passa). O seletor permite trocar para <strong>excedente</strong>
+                (uso − limite, positivo quando passa). A cor (vermelho = ruim) não muda.
+              </p>
+            </Card>
+            <Card>
+              <h3 className="font-semibold text-gray-900">Simular data</h3>
+              <p className="mt-3 text-sm text-gray-600">
+                O campo <strong>Simular data</strong> (com atalhos <span className="font-mono">+1m / +3m / +6m</span>)
+                recalcula projeção, status e a janela de meses como se hoje fosse a data escolhida —
+                útil para antever quando os ferramentais estouram. Uma faixa amarela avisa que você está
+                simulando; clique em <em>voltar para hoje</em> para sair.
+              </p>
+            </Card>
+            <Card>
+              <h3 className="font-semibold text-gray-900">Exportar Excel</h3>
+              <p className="mt-3 text-sm text-gray-600">
+                O botão <strong>Exportar Excel</strong> gera uma planilha (.xlsx) com o histórico de
+                manutenções e a projeção de demanda num período De/Até. As abas de Status e Preventivas
+                seguem os <strong>filtros atuais</strong> da tela.
               </p>
             </Card>
           </div>
