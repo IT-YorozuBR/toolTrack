@@ -20,6 +20,44 @@ const STATUS_ORDER: Record<MaintenanceStatus, number> = {
   OK: 4,
 };
 
+// Metadados visuais por status — cor em hex porque o SVG do donut usa `fill`/`stroke`.
+const STATUS_META: Record<MaintenanceStatus, { label: string; color: string }> = {
+  VENCIDO: { label: "Vencido", color: "#dc2626" },
+  PROGRAMAR_PREVENTIVA: { label: "Preventiva", color: "#ea580c" },
+  ATENCAO: { label: "Atenção", color: "#eab308" },
+  ERRO_CADASTRO: { label: "Erro cadastro", color: "#64748b" },
+  OK: { label: "OK", color: "#16a34a" },
+};
+
+// Peso de "saúde" por status (0–100). O health score é a média desses pesos.
+const HEALTH_WEIGHT: Record<MaintenanceStatus, number> = {
+  OK: 100,
+  ATENCAO: 65,
+  PROGRAMAR_PREVENTIVA: 40,
+  ERRO_CADASTRO: 30,
+  VENCIDO: 0,
+};
+
+const DONUT_ORDER: MaintenanceStatus[] = [
+  "VENCIDO",
+  "PROGRAMAR_PREVENTIVA",
+  "ATENCAO",
+  "ERRO_CADASTRO",
+  "OK",
+];
+
+export type DashboardFilter = {
+  press?: string;
+  line?: string;
+};
+
+export type StatusSlice = {
+  key: MaintenanceStatus;
+  label: string;
+  value: number;
+  color: string;
+};
+
 const PT_MONTH_IDX: Record<string, number> = {
   Jan: 0,
   Fev: 1,
@@ -160,7 +198,34 @@ function buildQualityIssues(params: {
   return issues.filter((issue) => issue.count > 0);
 }
 
-export async function getDashboardData() {
+function buildStatusDistribution(projections: ToolProjection[]): StatusSlice[] {
+  return DONUT_ORDER.map((status) => ({
+    key: status,
+    label: STATUS_META[status].label,
+    color: STATUS_META[status].color,
+    value: projections.filter((p) => statusOf(p) === status).length,
+  }));
+}
+
+function buildHealthScore(projections: ToolProjection[]): number {
+  if (projections.length === 0) return 100;
+  const total = projections.reduce((sum, p) => sum + HEALTH_WEIGHT[statusOf(p)], 0);
+  return Math.round(total / projections.length);
+}
+
+function distinctSorted(values: (string | null | undefined)[]): string[] {
+  return [...new Set(values.filter((value): value is string => Boolean(value)))].sort((a, b) =>
+    a.localeCompare(b, "pt-BR"),
+  );
+}
+
+function matchesFilter(projection: ToolProjection, filter: DashboardFilter): boolean {
+  if (filter.press && projection.press !== filter.press) return false;
+  if (filter.line && (projection.line ?? "") !== filter.line) return false;
+  return true;
+}
+
+export async function getDashboardData(filter: DashboardFilter = {}) {
   await autoEnsureMonthlySnapshots();
 
   const toolInclude = {
@@ -243,7 +308,16 @@ export async function getDashboardData() {
     }),
   ]);
 
-  const projections = getAllToolsProjection(tools);
+  const allProjections = getAllToolsProjection(tools);
+
+  // Opções de filtro derivam do conjunto completo (para permitir trocar a seleção),
+  // mas todo o resto do painel usa as projeções já filtradas.
+  const filterOptions = {
+    presses: distinctSorted(allProjections.map((p) => p.press)),
+    lines: distinctSorted(allProjections.map((p) => p.line)),
+  };
+  const projections = allProjections.filter((p) => matchesFilter(p, filter));
+
   const counts = {
     total: projections.length,
     ok: projections.filter((p) => statusOf(p) === "OK").length,
@@ -267,6 +341,9 @@ export async function getDashboardData() {
   const staleReadingCount = projections.filter((p) => p.readingStale).length;
 
   const planningBuckets = getPlanningBuckets(projections);
+  const statusDistribution = buildStatusDistribution(projections);
+  const healthScore = buildHealthScore(projections);
+
   const qualityIssues = buildQualityIssues({
     projections,
     toolsWithoutBom,
@@ -295,5 +372,9 @@ export async function getDashboardData() {
     recentMaintenances: recentMaintenanceRows,
     planningBuckets,
     qualityIssues,
+    statusDistribution,
+    healthScore,
+    filterOptions,
+    appliedFilter: filter,
   };
 }

@@ -15,9 +15,12 @@ import {
 
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Donut } from "@/components/charts/Donut";
+import { BarSeries } from "@/components/charts/BarSeries";
 import { formatNumber } from "@/lib/utils";
 import type { MaintenanceStatus, ToolProjection } from "@/lib/calculations/strokes";
 import { getDashboardData, type QualityIssue } from "./dashboard-data";
+import { DashboardFilters } from "./DashboardFilters";
 
 export const dynamic = "force-dynamic";
 
@@ -214,43 +217,89 @@ function ActionTable({ items }: { items: ToolProjection[] }) {
   );
 }
 
-function PlanningBuckets({
-  buckets,
+function ChartCard({
+  title,
+  description,
+  action,
+  children,
+  className = "",
 }: {
-  buckets: { label: string; count: number; urgent: number }[];
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
 }) {
-  if (buckets.length === 0) {
-    return <EmptyPanel>Nenhum ferramental alcança o limite na janela calculada.</EmptyPanel>;
-  }
+  return (
+    <div className={`rounded-lg border border-slate-200 bg-white p-4 shadow-sm ${className}`}>
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-slate-900">{title}</p>
+          {description && <p className="mt-0.5 text-xs text-slate-500">{description}</p>}
+        </div>
+        {action}
+      </div>
+      {children}
+    </div>
+  );
+}
 
-  const max = Math.max(...buckets.map((bucket) => bucket.count), 1);
+function healthMeta(score: number) {
+  if (score >= 85) return { label: "Ótimo", color: "#16a34a" };
+  if (score >= 70) return { label: "Bom", color: "#2563eb" };
+  if (score >= 50) return { label: "Atenção", color: "#ea580c" };
+  return { label: "Crítico", color: "#dc2626" };
+}
+
+function HealthScoreCard({ score, total }: { score: number; total: number }) {
+  const meta = healthMeta(score);
+  const size = 132;
+  const stroke = 12;
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const dash = (score / 100) * circumference;
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="space-y-3">
-        {buckets.map((bucket) => (
-          <Link
-            key={bucket.label}
-            href={`/controle-50k?reachesMonth=${encodeURIComponent(bucket.label)}`}
-            className="group grid grid-cols-[5rem_1fr_auto] items-center gap-3"
+    <ChartCard
+      title="Health score da frota"
+      description="Índice ponderado pela criticidade dos status."
+    >
+      <div className="flex items-center gap-5">
+        <div className="relative shrink-0" style={{ width: size, height: size }}>
+          <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+            <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#f1f5f9" strokeWidth={stroke} />
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              fill="none"
+              stroke={meta.color}
+              strokeWidth={stroke}
+              strokeDasharray={`${dash} ${circumference}`}
+              strokeLinecap="round"
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-3xl font-bold tabular-nums text-slate-900">{score}</span>
+            <span className="text-xs text-slate-400">de 100</span>
+          </div>
+        </div>
+        <div className="space-y-2">
+          <span
+            className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold"
+            style={{ backgroundColor: `${meta.color}1a`, color: meta.color }}
           >
-            <span className="text-sm font-medium text-slate-700">{bucket.label}</span>
-            <span className="h-2 overflow-hidden rounded-full bg-slate-100">
-              <span
-                className="block h-full rounded-full bg-blue-600"
-                style={{ width: `${Math.max(8, (bucket.count / max) * 100)}%` }}
-              />
-            </span>
-            <span className="text-right text-sm text-slate-600">
-              <strong className="text-slate-900">{bucket.count}</strong>
-              {bucket.urgent > 0 && (
-                <span className="ml-1 text-xs text-orange-600">({bucket.urgent} urg.)</span>
-              )}
-            </span>
-          </Link>
-        ))}
+            {meta.label}
+          </span>
+          <p className="text-sm text-slate-600">
+            Base: <strong className="text-slate-900">{formatNumber(total)}</strong> ferramentais no escopo.
+          </p>
+          <p className="text-xs text-slate-400">
+            Vencidos e erros de cadastro derrubam o índice; ferramentais OK o sustentam.
+          </p>
+        </div>
       </div>
-    </div>
+    </ChartCard>
   );
 }
 
@@ -385,8 +434,15 @@ function RecentMaintenances({
   );
 }
 
-export default async function DashboardPage() {
-  const data = await getDashboardData();
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ press?: string; line?: string }>;
+}) {
+  const params = await searchParams;
+  const filter = { press: params.press, line: params.line };
+  const data = await getDashboardData(filter);
+  const isFiltered = Boolean(filter.press || filter.line);
 
   return (
     <div className="space-y-8">
@@ -410,6 +466,25 @@ export default async function DashboardPage() {
           </div>
         }
       />
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
+        <DashboardFilters
+          presses={data.filterOptions.presses}
+          lines={data.filterOptions.lines}
+          applied={data.appliedFilter}
+        />
+        <span className="text-xs text-slate-500">
+          {isFiltered ? (
+            <>
+              Escopo: <strong className="text-slate-700">{formatNumber(data.counts.total)}</strong> ferramentais
+            </>
+          ) : (
+            <>
+              <strong className="text-slate-700">{formatNumber(data.counts.total)}</strong> ferramentais ativos
+            </>
+          )}
+        </span>
+      </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
         <KpiCard
@@ -462,6 +537,44 @@ export default async function DashboardPage() {
         />
       </div>
 
+      <div className="grid gap-4 xl:grid-cols-3">
+        <HealthScoreCard score={data.healthScore} total={data.counts.total} />
+
+        <ChartCard
+          title="Distribuição por status"
+          description="Participação de cada status na frota em escopo."
+        >
+          {data.counts.total === 0 ? (
+            <EmptyPanel>Nenhum ferramental no escopo atual.</EmptyPanel>
+          ) : (
+            <Donut slices={data.statusDistribution} />
+          )}
+        </ChartCard>
+
+        <ChartCard
+          title="Manutenções previstas"
+          description="Ferramentais que cruzam o limite por mês."
+          action={
+            <Link href="/controle-50k?sort=real_asc" className="text-xs font-medium text-blue-600 hover:text-blue-700">
+              Detalhar
+            </Link>
+          }
+        >
+          {data.planningBuckets.length === 0 ? (
+            <EmptyPanel>Nenhum ferramental alcança o limite na janela calculada.</EmptyPanel>
+          ) : (
+            <BarSeries
+              items={data.planningBuckets.map((bucket) => ({
+                label: bucket.label.replace(/\/(\d{2})(\d{2})$/, "/$2"),
+                value: bucket.count,
+                highlight: bucket.urgent,
+                href: `/controle-50k?reachesMonth=${encodeURIComponent(bucket.label)}`,
+              }))}
+            />
+          )}
+        </ChartCard>
+      </div>
+
       <Section
         title="Fila de ação"
         description="Prioridade por status e menor saldo 50K atual."
@@ -474,25 +587,16 @@ export default async function DashboardPage() {
         <ActionTable items={data.actionQueue} />
       </Section>
 
-      <div className="grid gap-8 xl:grid-cols-[1fr_0.8fr]">
-        <Section
-          title="Saúde das leituras"
-          description="Mostra onde o status ainda depende de estimativa ou de leitura antiga."
-        >
-          <ReadingHealth
-            staleReadings={data.staleReadings}
-            missingReadings={data.missingReadings}
-            staleReadingCount={data.staleReadingCount}
-          />
-        </Section>
-
-        <Section
-          title="Planejamento por mês"
-          description="Quando a projeção cruza o limite de 50K."
-        >
-          <PlanningBuckets buckets={data.planningBuckets} />
-        </Section>
-      </div>
+      <Section
+        title="Saúde das leituras"
+        description="Mostra onde o status ainda depende de estimativa ou de leitura antiga."
+      >
+        <ReadingHealth
+          staleReadings={data.staleReadings}
+          missingReadings={data.missingReadings}
+          staleReadingCount={data.staleReadingCount}
+        />
+      </Section>
 
       <Section
         title="Qualidade dos dados"

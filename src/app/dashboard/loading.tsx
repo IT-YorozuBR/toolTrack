@@ -16,6 +16,14 @@ export default function DashboardLoading() {
         </div>
       </div>
 
+      <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
+        <div className="flex gap-2">
+          <SkeletonBlock className="h-9 w-40" />
+          <SkeletonBlock className="h-9 w-36" />
+        </div>
+        <SkeletonBlock className="h-4 w-32" />
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
         {Array.from({ length: 6 }).map((_, index) => (
           <div key={index} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -27,6 +35,15 @@ export default function DashboardLoading() {
               <SkeletonBlock className="h-9 w-9" />
             </div>
             <SkeletonBlock className="mt-4 h-3 w-full" />
+          </div>
+        ))}
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div key={index} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <SkeletonBlock className="h-4 w-40" />
+            <SkeletonBlock className="mt-4 h-40 w-full" />
           </div>
         ))}
       </div>

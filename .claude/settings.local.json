@@ -19,7 +19,9 @@
       "Bash(del src\\\\app\\\\volumes\\\\VolumeForm.tsx src\\\\app\\\\volumes\\\\VolumeActions.tsx)",
       "Bash(npm test *)",
       "Bash(mkdir \"C:\\\\Users\\\\lucas.g\\\\projetos\\\\prensa-stroke\\\\src\\\\app\\\\projetos\\\\[id]\")",
-      "Bash(mkdir \"C:\\\\Users\\\\lucas.g\\\\projetos\\\\prensa-stroke\\\\src\\\\app\\\\projetos\\\\[id]\\\\editar\")"
+      "Bash(mkdir \"C:\\\\Users\\\\lucas.g\\\\projetos\\\\prensa-stroke\\\\src\\\\app\\\\projetos\\\\[id]\\\\editar\")",
+      "Bash(npx eslint *)",
+      "Bash(echo \"EXIT: $?\")"
     ]
   }
 }

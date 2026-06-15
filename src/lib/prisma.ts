@@ -22,10 +22,24 @@ function getConnectionString() {
   }
 }
 
+// Local Postgres (localhost/127.0.0.1) typically has no TLS, while managed
+// providers like Neon require it. Enable SSL only for non-local hosts so the
+// same code works against both.
+function needsSsl(connectionString: string | undefined) {
+  if (!connectionString) return false;
+  try {
+    const host = new URL(connectionString).hostname;
+    return host !== "localhost" && host !== "127.0.0.1" && host !== "::1";
+  } catch {
+    return true;
+  }
+}
+
 function createPrismaClient() {
+  const connectionString = getConnectionString();
   const pool = new pg.Pool({
-    connectionString: getConnectionString(),
-    ssl: { rejectUnauthorized: false },
+    connectionString,
+    ssl: needsSsl(connectionString) ? { rejectUnauthorized: false } : false,
   });
   const adapter = new PrismaPg(pool);
   // PrismaPg adapter type doesn't fully overlap with PrismaClientOptions

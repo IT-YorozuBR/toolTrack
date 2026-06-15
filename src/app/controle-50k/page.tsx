@@ -9,6 +9,7 @@ import { formatNumber } from "@/lib/utils";
 import { Controle50KFilters } from "./Controle50KFilters";
 import { RegisterMaintenanceButton } from "./RegisterMaintenanceButton";
 import { ExportButton } from "./ExportButton";
+import { FullscreenButton } from "./FullscreenButton";
 import Link from "next/link";
 
 const PAGE_SIZE = 50;
@@ -307,8 +308,11 @@ export default async function Controle50KPage({
           description="Ajuste os filtros ou cadastre ferramentais para visualizar as projeções."
         />
       ) : (
-        <div className="bg-white rounded-xlR border border-gray-200 shadow-sm overflow-hidden mt-4">
-          <div className="overflow-auto max-h-[calc(100vh-18rem)]">
+        <div id="controle-50k-table" className="bg-white rounded-xlR border border-gray-200 shadow-sm overflow-hidden mt-4">
+          <div className="flex justify-end border-b border-gray-200 px-3 py-2">
+            <FullscreenButton targetId="controle-50k-table" scrollId="controle-50k-table-scroll" />
+          </div>
+          <div id="controle-50k-table-scroll" className="overflow-auto max-h-[calc(100vh-18rem)]">
             <table className="w-full table-fixed text-[11px] leading-tight">
               <thead className="sticky top-0 z-10 bg-gray-50 [&_th]:bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -541,7 +545,7 @@ export default async function Controle50KPage({
               </tbody>
             </table>
           </div>
-          <Pagination currentPage={currentPage} totalPages={totalPages} buildPageUrl={buildPageUrl} />
+          <Pagination currentPage={currentPage} totalPages={totalPages} buildPageUrl={buildPageUrl} scroll={false} />
         </div>
       )}
     </div>

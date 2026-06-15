@@ -1,28 +1,76 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface Props {
   presses: string[];
   availableMonths: string[];
 }
 
+// Chaves de filtro geridas por esta barra. statusView fica de fora de propósito:
+// é uma preferência de visão alternada pelo cabeçalho da tabela, não um filtro.
+const FILTER_KEYS = [
+  "status",
+  "reachesMonth",
+  "reachesFrom",
+  "reachesTo",
+  "search",
+  "saldoSign",
+  "sort",
+  "simulateDate",
+] as const;
+
+type FilterKey = (typeof FILTER_KEYS)[number];
+type FilterState = Record<FilterKey, string>;
+
+function readFilters(searchParams: URLSearchParams): FilterState {
+  return Object.fromEntries(
+    FILTER_KEYS.map((k) => [k, searchParams.get(k) ?? ""])
+  ) as FilterState;
+}
+
 export function Controle50KFilters({ presses, availableMonths }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const updateFilter = useCallback(
-    (key: string, value: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (value) params.set(key, value);
-      else params.delete(key);
-      params.delete("page");
-      router.push(`/controle-50k?${params.toString()}`);
-    },
-    [router, searchParams]
-  );
+  // Estado local: os filtros não são aplicados a cada mudança, só ao clicar em Pesquisar.
+  const [filters, setFilters] = useState<FilterState>(() => readFilters(searchParams));
 
-  const simulateDate = searchParams.get("simulateDate") ?? "";
+  // Mantém o estado local em sincronia quando a URL muda por fora desta barra
+  // (paginação, alternância de visão no cabeçalho, ou após aplicar/limpar).
+  useEffect(() => {
+    setFilters(readFilters(searchParams));
+  }, [searchParams]);
+
+  const setField = useCallback((key: FilterKey, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  }, []);
+
+  const applyFilters = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const key of FILTER_KEYS) {
+      if (filters[key]) params.set(key, filters[key]);
+      else params.delete(key);
+    }
+    params.delete("page");
+    router.push(`/controle-50k?${params.toString()}`);
+  }, [filters, router, searchParams]);
+
+  const clearFilters = useCallback(() => {
+    // Preserva statusView (preferência de visão); zera tudo o mais.
+    const params = new URLSearchParams();
+    const statusView = searchParams.get("statusView");
+    if (statusView) params.set("statusView", statusView);
+    const qs = params.toString();
+    router.push(`/controle-50k${qs ? `?${qs}` : ""}`);
+  }, [router, searchParams]);
+
+  const simulateDate = filters.simulateDate;
+
+  // Indica se há algo a limpar (algum filtro local ou já aplicado na URL).
+  const hasActiveFilters =
+    FILTER_KEYS.some((k) => filters[k]) ||
+    FILTER_KEYS.some((k) => searchParams.get(k));
 
   // Formata uma data como YYYY-MM-DD no fuso local (sem deslocamento de UTC).
   const toInputValue = (d: Date) =>
@@ -32,14 +80,14 @@ export function Controle50KFilters({ presses, availableMonths }: Props) {
   const jumpMonths = (months: number) => {
     const base = simulateDate ? new Date(`${simulateDate}T12:00:00`) : new Date();
     base.setMonth(base.getMonth() + months);
-    updateFilter("simulateDate", toInputValue(base));
+    setField("simulateDate", toInputValue(base));
   };
 
   return (
     <div className="flex gap-3 flex-wrap items-center">
       <select
-        value={searchParams.get("status") ?? ""}
-        onChange={(e) => updateFilter("status", e.target.value)}
+        value={filters.status}
+        onChange={(e) => setField("status", e.target.value)}
         className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
       >
         <option value="">Todos os status</option>
@@ -50,20 +98,9 @@ export function Controle50KFilters({ presses, availableMonths }: Props) {
         <option value="ERRO_CADASTRO">Erro de Cadastro</option>
       </select>
 
-      {/* <select
-        value={searchParams.get("press") ?? ""}
-        onChange={(e) => updateFilter("press", e.target.value)}
-        className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-      >
-        <option value="">Todas as prensas</option>
-        {presses.map((p) => (
-          <option key={p} value={p}>{p}</option>
-        ))}
-      </select> */}
-
       <select
-        value={searchParams.get("reachesMonth") ?? ""}
-        onChange={(e) => updateFilter("reachesMonth", e.target.value)}
+        value={filters.reachesMonth}
+        onChange={(e) => setField("reachesMonth", e.target.value)}
         className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
       >
         <option value="">Manutenção em qualquer mês</option>
@@ -76,8 +113,8 @@ export function Controle50KFilters({ presses, availableMonths }: Props) {
         <span className="text-sm text-gray-500 whitespace-nowrap">Atinge entre</span>
         <select
           aria-label="Atinge limite a partir de"
-          value={searchParams.get("reachesFrom") ?? ""}
-          onChange={(e) => updateFilter("reachesFrom", e.target.value)}
+          value={filters.reachesFrom}
+          onChange={(e) => setField("reachesFrom", e.target.value)}
           className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
         >
           <option value="">início</option>
@@ -88,8 +125,8 @@ export function Controle50KFilters({ presses, availableMonths }: Props) {
         <span className="text-sm text-gray-500">e</span>
         <select
           aria-label="Atinge limite até"
-          value={searchParams.get("reachesTo") ?? ""}
-          onChange={(e) => updateFilter("reachesTo", e.target.value)}
+          value={filters.reachesTo}
+          onChange={(e) => setField("reachesTo", e.target.value)}
           className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
         >
           <option value="">fim</option>
@@ -99,35 +136,20 @@ export function Controle50KFilters({ presses, availableMonths }: Props) {
         </select>
       </div>
 
-      {/* <div className="flex items-center gap-2">
-        <span className="text-sm text-gray-500 whitespace-nowrap">Batidas ≥</span>
-        <input
-          type="number"
-          min="0"
-          step="1000"
-          placeholder="Ex: 40000"
-          defaultValue={searchParams.get("minStrokes") ?? ""}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") updateFilter("minStrokes", (e.target as HTMLInputElement).value);
-          }}
-          onBlur={(e) => updateFilter("minStrokes", e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-32"
-        />
-      </div> */}
-
       <input
         type="text"
         placeholder="Buscar ferramental..."
-        defaultValue={searchParams.get("search") ?? ""}
+        value={filters.search}
+        onChange={(e) => setField("search", e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter") updateFilter("search", (e.target as HTMLInputElement).value);
+          if (e.key === "Enter") applyFilters();
         }}
         className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-48"
       />
 
       <select
-        value={searchParams.get("saldoSign") ?? ""}
-        onChange={(e) => updateFilter("saldoSign", e.target.value)}
+        value={filters.saldoSign}
+        onChange={(e) => setField("saldoSign", e.target.value)}
         className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
         title="Como exibir o Saldo 50k quando o ferramental ultrapassa o limite"
       >
@@ -136,8 +158,8 @@ export function Controle50KFilters({ presses, availableMonths }: Props) {
       </select>
 
       <select
-        value={searchParams.get("sort") ?? (searchParams.get("statusView") !== "estimado" ? "real_asc" : "saldo_asc")}
-        onChange={(e) => updateFilter("sort", e.target.value)}
+        value={filters.sort || (searchParams.get("statusView") !== "estimado" ? "real_asc" : "saldo_asc")}
+        onChange={(e) => setField("sort", e.target.value)}
         className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
       >
         <optgroup label="Saldo 50k Estimado">
@@ -164,7 +186,7 @@ export function Controle50KFilters({ presses, availableMonths }: Props) {
         <input
           type="date"
           value={simulateDate}
-          onChange={(e) => updateFilter("simulateDate", e.target.value)}
+          onChange={(e) => setField("simulateDate", e.target.value)}
           className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
         />
         <button
@@ -191,7 +213,7 @@ export function Controle50KFilters({ presses, availableMonths }: Props) {
         {simulateDate && (
           <button
             type="button"
-            onClick={() => updateFilter("simulateDate", "")}
+            onClick={() => setField("simulateDate", "")}
             className="rounded-md px-1.5 py-1 text-xs font-medium text-yellow-700 hover:bg-yellow-100"
             title="Voltar para hoje"
             aria-label="Limpar data simulada"
@@ -200,6 +222,23 @@ export function Controle50KFilters({ presses, availableMonths }: Props) {
           </button>
         )}
       </div>
+
+      <button
+        type="button"
+        onClick={applyFilters}
+        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+      >
+        Pesquisar
+      </button>
+
+      <button
+        type="button"
+        onClick={clearFilters}
+        disabled={!hasActiveFilters}
+        className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Limpar filtros
+      </button>
     </div>
   );
 }
