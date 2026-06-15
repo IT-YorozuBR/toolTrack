@@ -157,12 +157,11 @@ export async function GET(request: NextRequest) {
       maintenanceDate: { gte: from, lte: to },
       tool: { active: true, ...(press ? { press } : {}) },
     },
-    include: { tool: { select: { code: true, press: true } } },
+    include: { tool: { select: { code: true } } },
     orderBy: { maintenanceDate: "desc" },
   });
   const maintenances: MaintenanceReportRow[] = maintenanceRecords.map((m) => ({
     toolCode: m.tool.code,
-    press: m.tool.press,
     maintenanceDate: m.maintenanceDate,
     maintenanceType: m.maintenanceType,
     strokesAtMaintenance: m.strokesAtMaintenance,
@@ -182,7 +181,7 @@ export async function GET(request: NextRequest) {
         byMonth[m.key] = strokes;
         total += strokes;
       }
-      return { toolCode: tool.code, press: tool.press, byMonth, total };
+      return { toolCode: tool.code, byMonth, total };
     })
     .filter((r) => r.total > 0);
 

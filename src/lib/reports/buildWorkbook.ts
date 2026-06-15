@@ -14,7 +14,6 @@ const STATUS_LABEL: Record<MaintenanceStatus, string> = {
 
 export type MaintenanceReportRow = {
   toolCode: string;
-  press: string;
   maintenanceDate: Date;
   maintenanceType: string;
   strokesAtMaintenance: number;
@@ -25,7 +24,6 @@ export type MaintenanceReportRow = {
 
 export type DemandReportRow = {
   toolCode: string;
-  press: string;
   byMonth: Record<string, number>;
   total: number;
 };
@@ -108,8 +106,6 @@ function buildStatusSheet(input: ReportInput): XLSX.WorkSheet {
   const header = [
     "Código",
     "Descrição",
-    "Prensa",
-    "Linha",
     "Última Manut.",
     "Acúmulo Estimado",
     "Acúmulo Real",
@@ -128,8 +124,6 @@ function buildStatusSheet(input: ReportInput): XLSX.WorkSheet {
   const rows = input.projections.map((p) => [
     p.code,
     p.description ?? "",
-    p.press,
-    p.line ?? "",
     formatDate(p.lastMaintenanceDate),
     round(p.estimatedAccumulated),
     round(p.realCycleStrokes),
@@ -146,7 +140,7 @@ function buildStatusSheet(input: ReportInput): XLSX.WorkSheet {
 
   const ws = XLSX.utils.aoa_to_sheet([...metadataRows(input), header, ...rows]);
   return withColWidths(ws, [
-    16, 28, 12, 10, 13, 18, 13, 13, 13,
+    16, 28, 13, 18, 13, 13, 13,
     ...windowLabels.map(() => 11),
     16, 16, 16, 18, 16, 13,
   ]);
@@ -167,8 +161,6 @@ function buildPreventivasSheet(input: ReportInput): XLSX.WorkSheet {
   const header = [
     "Código",
     "Descrição",
-    "Prensa",
-    "Linha",
     "Status",
     "Saldo 50k Estimado",
     "Saldo 50k Real",
@@ -180,8 +172,6 @@ function buildPreventivasSheet(input: ReportInput): XLSX.WorkSheet {
   const rows = actionItems.map((p) => [
     p.code,
     p.description ?? "",
-    p.press,
-    p.line ?? "",
     effectiveStatusLabel(p),
     saldoValue(p.remainingStrokes, excedente),
     saldoValue(p.realRemainingStrokes, excedente),
@@ -190,14 +180,13 @@ function buildPreventivasSheet(input: ReportInput): XLSX.WorkSheet {
   ]);
 
   const ws = XLSX.utils.aoa_to_sheet([...metadataRows(input), header, ...rows]);
-  return withColWidths(ws, [16, 28, 12, 10, 20, 16, 16, 13, 13]);
+  return withColWidths(ws, [16, 28, 20, 16, 16, 13, 13]);
 }
 
 function buildMaintenanceSheet(input: ReportInput): XLSX.WorkSheet {
   const header = [
     "Data",
     "Ferramental",
-    "Prensa",
     "Tipo",
     "Batidas na Manut.",
     "Responsável",
@@ -208,7 +197,6 @@ function buildMaintenanceSheet(input: ReportInput): XLSX.WorkSheet {
   const rows = input.maintenances.map((m) => [
     formatDate(m.maintenanceDate),
     m.toolCode,
-    m.press,
     m.maintenanceType,
     round(m.strokesAtMaintenance),
     m.responsible ?? "",
@@ -217,26 +205,24 @@ function buildMaintenanceSheet(input: ReportInput): XLSX.WorkSheet {
   ]);
 
   const ws = XLSX.utils.aoa_to_sheet([...metadataRows(input), header, ...rows]);
-  return withColWidths(ws, [12, 16, 12, 16, 17, 18, 16, 40]);
+  return withColWidths(ws, [12, 16, 16, 17, 18, 16, 40]);
 }
 
 function buildDemandSheet(input: ReportInput): XLSX.WorkSheet {
   const header = [
     "Ferramental",
-    "Prensa",
     ...input.demand.months.map((m) => m.label),
     "Total",
   ];
 
   const rows = input.demand.rows.map((r) => [
     r.toolCode,
-    r.press,
     ...input.demand.months.map((m) => round(r.byMonth[m.key] ?? 0)),
     round(r.total),
   ]);
 
   const ws = XLSX.utils.aoa_to_sheet([...metadataRows(input), header, ...rows]);
-  return withColWidths(ws, [16, 12, ...input.demand.months.map(() => 11), 14]);
+  return withColWidths(ws, [16, ...input.demand.months.map(() => 11), 14]);
 }
 
 /** Monta o workbook completo (4 abas) e devolve o Buffer .xlsx. */
