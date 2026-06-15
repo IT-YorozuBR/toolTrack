@@ -369,6 +369,22 @@ describe("Controle 50K projection", () => {
     assert.equal(projection.effectiveStatus, "PROGRAMAR_PREVENTIVA");
   });
 
+  it("marks VENCIDO in the effective status when the live estimate passes the limit, even if the raw reading is still below", () => {
+    const projection = getToolProjection(
+      makeTool({
+        forecasts: [forecast(2026, 6, 12000)], // 12000 / 2 = 6000 batidas/mês → +3000 em 15 dias
+        strokeReadings: [{ readingDate: monthDate(2026, 6, 1), cycleStrokes: 48000 }],
+      }),
+      monthDate(2026, 6, 16),
+    );
+
+    assert.equal(projection.realCycleStrokes, 48000);
+    assert.equal(projection.realStatus, "PROGRAMAR_PREVENTIVA"); // leitura crua < 50000
+    assert.equal(projection.estimatedAccumulated, 51000); // leitura + dias já passou do limite
+    assert.ok(projection.currentRemainingStrokes < 0); // Saldo 50k Atual negativo
+    assert.equal(projection.effectiveStatus, "VENCIDO"); // status efetivo escala para VENCIDO
+  });
+
   it("does not mark VENCIDO from the projection alone — only programs the preventive", () => {
     const projection = getToolProjection(
       makeTool({

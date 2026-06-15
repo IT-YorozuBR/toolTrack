@@ -547,8 +547,13 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
   const realStatus = realCycleStrokes !== null
     ? getMaintenanceStatus(0, realCycleStrokes, tool.preventiveLimit, tool.warningLimit, tool.shotsPerStroke)
     : null;
-  // Status efetivo: usa o real quando há leitura; caso contrário, cai para o estimado.
-  const effectiveStatus = realStatus ?? status;
+  // Status efetivo: coerente com a coluna "Saldo 50k Atual", que usa o acúmulo vivo
+  // (projectionBaseStrokes = leitura + dias decorridos, ou estimado). Se esse acúmulo já
+  // passou do limite, o status é VENCIDO mesmo que a leitura crua (checkpoint do realStatus)
+  // ainda esteja abaixo — senão um ferramental com saldo atual negativo ficaria como
+  // "Programar Preventiva". Abaixo do limite, usa o real quando há leitura; senão o estimado.
+  const effectiveStatus: MaintenanceStatus =
+    projectionBaseStrokes >= tool.preventiveLimit ? "VENCIDO" : (realStatus ?? status);
   const statusFromEstimate = realStatus === null;
   const reachesLimitInMonth = (lastReset || hasRealReading)
     ? getMonthWhenReachesLimitFromCycle(tool, projectionBaseStrokes, currentMonthRemainingToDo, referenceDate)
