@@ -41,7 +41,15 @@
       "Bash(git check-ignore *)",
       "Bash(grep -iE \"docker|\\\\.tar$|backup_neon\")",
       "Bash(git rm *)",
-      "Bash(grep -iE \"docker|\\\\.tar$|backup\")"
+      "Bash(grep -iE \"docker|\\\\.tar$|backup\")",
+      "Bash(git rev-list *)",
+      "Bash(git cat-file *)",
+      "Bash(awk '/^blob/ && $2 > 50000000 {print $2, $3}')",
+      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch *)",
+      "Bash(git stash *)",
+      "Bash(git update-index *)",
+      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch --force --index-filter 'git rm --cached --ignore-unmatch prensa-stroke.tar' -- origin/main..HEAD)",
+      "Bash(git update-ref *)"
     ]
   }
 }

@@ -37,11 +37,11 @@ yarn-error.log*
 .vercel
 
 # docker
-Dockerfile
-.dockerignore
-docker-compose*.yml
-DOCKER.md
+# Dockerfile e docker-compose*.yml SÃO versionados: são necessários para o deploy
+# por código-fonte no servidor (git clone + docker compose up --build).
+# Só ignoramos a imagem exportada (docker save) e os dumps de banco, que são pesados.
 *.tar
+backup_neon.backup
 
 # typescript
 *.tsbuildinfo
