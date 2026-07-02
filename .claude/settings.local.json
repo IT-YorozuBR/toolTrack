@@ -37,7 +37,11 @@
       "Bash(powershell -Command \"Get-Service *postg* -ErrorAction SilentlyContinue | Select-Object Name,Status\")",
       "PowerShell(npm test *)",
       "PowerShell(npm run *)",
-      "Bash(echo \"EXIT=$?\")"
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(git check-ignore *)",
+      "Bash(grep -iE \"docker|\\\\.tar$|backup_neon\")",
+      "Bash(git rm *)",
+      "Bash(grep -iE \"docker|\\\\.tar$|backup\")"
     ]
   }
 }
