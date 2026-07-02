@@ -142,6 +142,82 @@ cat ~/backup-ARQUIVO.sql | docker compose exec -T db psql -U "$PGUSER" -d "$PGDB
 
 ---
 
+## Comandos Docker essenciais
+
+Referência rápida dos comandos mais usados no dia a dia deste servidor.
+
+### Containers
+
+```bash
+docker ps                       # containers rodando agora
+docker ps -a                    # todos (inclui parados)
+docker logs prensa-stroke       # logs do app
+docker logs -f prensa-stroke    # logs em tempo real (Ctrl+C para sair)
+docker logs --tail=100 prensa-stroke   # últimas 100 linhas
+
+docker restart prensa-stroke    # reinicia o app
+docker stop prensa-stroke       # para
+docker start prensa-stroke      # inicia
+
+# abrir um shell DENTRO do container do app (para inspecionar)
+docker exec -it prensa-stroke sh
+
+# rodar um comando pontual dentro do banco
+docker exec -it prensa-stroke-db psql -U <user> -d <db>
+```
+
+### Docker Compose (sempre rodar dentro de `~/toolTrack`)
+
+```bash
+docker compose ps               # status dos serviços deste projeto
+docker compose up -d            # sobe/atualiza em background
+docker compose up -d --build    # rebuilda a imagem e sobe
+docker compose build            # só builda (sem subir)
+docker compose down             # derruba os containers (MANTÉM o volume)
+docker compose down -v          # ⚠️ derruba e APAGA o volume (perde o banco!) — NÃO usar
+docker compose restart          # reinicia os serviços
+docker compose logs -f app      # logs do serviço app
+docker compose logs -f db       # logs do banco
+docker compose config           # mostra o compose já resolvido (útil p/ conferir volume/rede)
+docker compose exec db psql -U <user> -d <db>   # entra no psql do banco
+```
+
+> Diferença: `docker compose down` **preserva** o volume `prensa-stroke_pgdata`
+> (seus dados). O `-v` apaga o volume — **nunca** use aqui.
+
+### Imagens
+
+```bash
+docker images                   # lista imagens
+docker rmi <imagem>             # remove uma imagem
+docker build -t nome:tag .      # builda a partir do Dockerfile no diretório atual
+docker load -i arquivo.tar      # importa imagem de um .tar (docker save)
+docker save nome:tag -o arquivo.tar   # exporta imagem para .tar
+```
+
+### Volumes e rede
+
+```bash
+docker volume ls                # lista volumes (o do banco é prensa-stroke_pgdata)
+docker volume inspect prensa-stroke_pgdata   # detalhes/localização no disco
+docker network ls               # lista redes (a deste projeto é prensa-stroke_default)
+```
+
+### Limpeza (liberar espaço em disco)
+
+```bash
+docker system df                # quanto disco Docker está usando
+docker image prune              # remove imagens soltas (dangling) — seguro
+docker builder prune            # limpa cache de build antigo
+docker system prune             # remove tudo que não está em uso (containers parados, redes, cache)
+docker system prune -a          # ⚠️ mais agressivo: remove também imagens não usadas por containers ativos
+```
+
+> Depois de vários deploys, sobram imagens antigas ocupando disco.
+> `docker image prune` + `docker builder prune` resolvem com segurança.
+
+---
+
 ## Configuração inicial (one-time — já feita, aqui para referência)
 
 Só é necessário se for montar o deploy do zero numa máquina nova:
