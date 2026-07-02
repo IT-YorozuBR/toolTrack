@@ -17,6 +17,9 @@ export type ProductContribution = {
   productCode: string;
   strokesByMonth: Record<string, number>;
   totalStrokes: number;
+  // Projetos aos quais este produto pertence (rastreabilidade reversa
+  // ferramenta → produto → projeto). Vazio quando o produto não está em projeto.
+  projects: { id: string; name: string }[];
 };
 
 export type ToolProjection = {
@@ -81,6 +84,7 @@ type BomItemWithProduct = {
     projectProducts?: {
       project: {
         id: string;
+        name: string;
         forecasts: {
           referenceMonth: Date;
           plannedQuantity: number;
@@ -118,6 +122,9 @@ type ToolWithRelations = {
   currentStrokes: number;
   preventiveLimit: number;
   warningLimit: number;
+  // Quando true, as leituras manuais são desconsideradas na projeção (acúmulo cai
+  // para o estimado). Os dados das leituras não são apagados — só ignorados aqui.
+  ignoreManualReadings?: boolean;
   bomItems: BomItemWithProduct[];
   maintenanceRecords: MaintenanceRecordForProjection[];
   monthlySnapshots?: MonthlySnapshotForProjection[];
@@ -355,6 +362,7 @@ function getRealCycleEstimate(
   lastReset: MaintenanceRecordForProjection | undefined,
   today: Date,
 ): { reading: StrokeReadingForProjection; estimated: number } | null {
+  if (tool.ignoreManualReadings) return null;
   if (!tool.strokeReadings?.length) return null;
   if (!tool.shotsPerStroke || tool.shotsPerStroke <= 0 || !isFinite(tool.shotsPerStroke)) return null;
 
@@ -498,14 +506,23 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
   );
 
   let estimatedStrokes: number;
+  // true quando a base do acúmulo já inclui a parte JÁ DECORRIDA do mês corrente
+  // (estimativa ancorada em "hoje"). Nesse caso a projeção deve somar só o que
+  // FALTA do mês + meses futuros — somar a janela inteira contaria o mês atual 2x.
+  // false só para o contador estático (currentStrokes sem reset), que representa
+  // um instante indefinido e portanto recebe a janela completa.
+  let estimatedBaseAnchoredToToday: boolean;
   if (lastReset) {
     estimatedStrokes = hasMonthlySnapshots
       ? closedHistoricalStrokes + currentMonthElapsedStrokes
       : calculateEstimatedStrokes(lastReset.maintenanceDate, tool, today);
+    estimatedBaseAnchoredToToday = true;
   } else if (tool.currentStrokes > 0) {
     estimatedStrokes = tool.currentStrokes;
+    estimatedBaseAnchoredToToday = false;
   } else {
     estimatedStrokes = calculateEstimatedStrokes(startOfMonth(today), tool, today);
+    estimatedBaseAnchoredToToday = true;
   }
 
   const realCycle = getRealCycleEstimate(tool, lastReset, today);
@@ -527,7 +544,11 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
   // Acúmulo Estimado exibido = base da projeção (leitura+dias quando há leitura; previsão caso contrário).
   const estimatedAccumulated = projectionBaseStrokes;
 
-  const totalProjectedStrokes = lastReset
+  // A leitura real é ancorada em hoje (leitura + dias decorridos); a base estimada
+  // é ancorada conforme calculado acima. Quando ancorada em hoje, projeta com o
+  // "falta do mês + futuros"; senão (contador estático) usa a janela completa.
+  const baseAnchoredToToday = hasRealReading || estimatedBaseAnchoredToToday;
+  const totalProjectedStrokes = baseAnchoredToToday
     ? projectionBaseStrokes + forecastedStrokesAfterMaintenance
     : projectionBaseStrokes + forecastedStrokes;
   const remainingStrokes = tool.preventiveLimit - totalProjectedStrokes;
@@ -547,15 +568,25 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
   const realStatus = realCycleStrokes !== null
     ? getMaintenanceStatus(0, realCycleStrokes, tool.preventiveLimit, tool.warningLimit, tool.shotsPerStroke)
     : null;
-  // Status efetivo: coerente com a coluna "Saldo 50k Atual", que usa o acúmulo vivo
-  // (projectionBaseStrokes = leitura + dias decorridos, ou estimado). Se esse acúmulo já
-  // passou do limite, o status é VENCIDO mesmo que a leitura crua (checkpoint do realStatus)
-  // ainda esteja abaixo — senão um ferramental com saldo atual negativo ficaria como
-  // "Programar Preventiva". Abaixo do limite, usa o real quando há leitura; senão o estimado.
-  const effectiveStatus: MaintenanceStatus =
-    projectionBaseStrokes >= tool.preventiveLimit ? "VENCIDO" : (realStatus ?? status);
+  // Status efetivo (badge da coluna "Status Real"): SEMPRE derivado do acúmulo vivo
+  // (projectionBaseStrokes = leitura + dias decorridos, ou o estimado quando não há leitura).
+  // É exatamente o número da coluna "Saldo 50k Atual" e o mesmo usado na ordenação, então
+  // badge + saldo + ordem contam a mesma história. NÃO usa a leitura crua (realStatus) nem a
+  // projeção de 4 meses: a crua deixava o badge atrasado (ex.: saldo atual baixo mas badge OK,
+  // porque os dias decorridos ainda não entravam), e a projeção inflava tudo para "Programar".
+  // A projeção de 4 meses só aparece na coluna "Atinge" e no toggle "Status Estimado". Como o
+  // acúmulo vivo é sempre ≥ a leitura crua, o badge nunca fica mais brando que a medição real.
+  const effectiveStatus: MaintenanceStatus = getMaintenanceStatus(
+    0,
+    Math.round(projectionBaseStrokes),
+    tool.preventiveLimit,
+    tool.warningLimit,
+    tool.shotsPerStroke,
+  );
   const statusFromEstimate = realStatus === null;
-  const reachesLimitInMonth = (lastReset || hasRealReading)
+  // Mesma lógica do Projetado: base ancorada em hoje soma a partir do acúmulo vivo
+  // (acúmulo + falta do mês + futuros); contador estático parte do zero do ciclo.
+  const reachesLimitInMonth = baseAnchoredToToday
     ? getMonthWhenReachesLimitFromCycle(tool, projectionBaseStrokes, currentMonthRemainingToDo, referenceDate)
     : getMonthWhenReachesLimit(tool, referenceDate);
 
@@ -565,10 +596,17 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
     for (const bomItem of tool.bomItems) {
       const { id: productId, code: productCode } = bomItem.product;
       if (!byProduct.has(productId)) {
-        byProduct.set(productId, { productId, productCode, strokesByMonth: {}, totalStrokes: 0 });
+        byProduct.set(productId, { productId, productCode, strokesByMonth: {}, totalStrokes: 0, projects: [] });
       }
       const entry = byProduct.get(productId)!;
       const projectProducts = bomItem.product.projectProducts;
+      if (projectProducts) {
+        for (const pp of projectProducts) {
+          if (!entry.projects.some((x) => x.id === pp.project.id)) {
+            entry.projects.push({ id: pp.project.id, name: pp.project.name });
+          }
+        }
+      }
       const forecastSources = projectProducts && projectProducts.length > 0
         ? projectProducts.flatMap((pp) => pp.project.forecasts)
         : bomItem.product.forecasts;

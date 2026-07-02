@@ -113,6 +113,7 @@ describe("Controle 50K projection", () => {
             "2026-08": 5000,
           },
           totalStrokes: 20000,
+          projects: [],
         },
       ],
       errors: [],
@@ -182,6 +183,7 @@ describe("Controle 50K projection", () => {
             "2026-09": 6000,
           },
           totalStrokes: 21100,
+          projects: [],
         },
       ],
       errors: [],
@@ -268,9 +270,10 @@ describe("Controle 50K projection", () => {
     // O crescimento por dias agora vive no estimado: leitura (20000) + 1500 dias = 21500.
     assert.equal(projection.realEstimatedStrokes, 21500);
     assert.equal(projection.estimatedAccumulated, 21500);
-    // Projeção principal ancorada no acúmulo estimado (21500) + forecast futuro (3000).
-    assert.equal(projection.totalProjectedStrokes, 24500);
-    assert.equal(projection.remainingStrokes, 25500);
+    // Projeção ancorada no acúmulo estimado (21500) + o que FALTA do mês (1500);
+    // os 1500 já decorridos do mês estão dentro dos 21500, não somam de novo.
+    assert.equal(projection.totalProjectedStrokes, 23000);
+    assert.equal(projection.remainingStrokes, 27000);
     assert.equal(projection.status, "OK");
     assert.equal(projection.reachesLimitInMonth, undefined);
   });
@@ -290,7 +293,7 @@ describe("Controle 50K projection", () => {
 
     // Sem leitura, a projeção usa as batidas estimadas (base menor) → saldo maior.
     assert.equal(withoutReal.realEstimatedStrokes, null);
-    assert.equal(withoutReal.remainingStrokes, 45500); // 50000 - (1500 estimado + 3000 forecast)
+    assert.equal(withoutReal.remainingStrokes, 47000); // 50000 - (1500 decorrido + 1500 falta do mês)
     assert.ok(withReal.remainingStrokes < withoutReal.remainingStrokes);
   });
 
@@ -355,6 +358,29 @@ describe("Controle 50K projection", () => {
     assert.equal(projection.effectiveStatus, projection.status);
   });
 
+  it("falls back to the current-accumulation status (not the 4-month projection) when there is no real reading", () => {
+    const projection = getToolProjection(
+      makeTool({
+        forecasts: [
+          forecast(2026, 5, 40000),
+          forecast(2026, 6, 40000),
+          forecast(2026, 7, 40000),
+          forecast(2026, 8, 40000),
+        ],
+      }),
+      monthDate(2026, 5, 10),
+    );
+
+    assert.equal(projection.realStatus, null);
+    assert.equal(projection.statusFromEstimate, true);
+    // A projeção de 4 meses fura o limite → status projetado (visão Estimado) é PROGRAMAR...
+    assert.equal(projection.status, "PROGRAMAR_PREVENTIVA");
+    // ...mas o acúmulo atual estimado ainda está baixo, então o status efetivo (visão Real
+    // sem leitura) cai para OK, casando com a coluna "Saldo 50k Atual".
+    assert.ok(projection.estimatedAccumulated < 40000);
+    assert.equal(projection.effectiveStatus, "OK");
+  });
+
   it("uses the real status as the effective status when there is a reading", () => {
     const projection = getToolProjection(
       makeTool({
@@ -366,6 +392,22 @@ describe("Controle 50K projection", () => {
 
     assert.equal(projection.realStatus, "PROGRAMAR_PREVENTIVA");
     assert.equal(projection.statusFromEstimate, false);
+    assert.equal(projection.effectiveStatus, "PROGRAMAR_PREVENTIVA");
+  });
+
+  it("drives the effective status from the live accumulation (reading + days), not the raw reading, so the badge matches Saldo 50k Atual", () => {
+    const projection = getToolProjection(
+      makeTool({
+        forecasts: [forecast(2026, 6, 12000)], // 12000 / 2 = 6000 batidas/mês → +3000 em 15 dias
+        strokeReadings: [{ readingDate: monthDate(2026, 6, 1), cycleStrokes: 44000 }],
+      }),
+      monthDate(2026, 6, 16),
+    );
+
+    assert.equal(projection.realCycleStrokes, 44000);
+    assert.equal(projection.realStatus, "ATENCAO"); // leitura crua 44000 → 40k–45k
+    assert.equal(projection.estimatedAccumulated, 47000); // leitura + dias
+    // O badge segue o acúmulo vivo (47000 → 45k–50k), não a leitura crua.
     assert.equal(projection.effectiveStatus, "PROGRAMAR_PREVENTIVA");
   });
 

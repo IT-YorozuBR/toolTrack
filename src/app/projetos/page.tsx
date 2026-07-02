@@ -12,9 +12,9 @@ const PAGE_SIZE = 20;
 export default async function ProjetosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; search?: string; projeto?: string }>;
+  searchParams: Promise<{ page?: string; search?: string; projeto?: string; back?: string }>;
 }) {
-  const { page, search, projeto } = await searchParams;
+  const { page, search, projeto, back } = await searchParams;
 
   if (projeto) {
     const [project, allProducts] = await Promise.all([
@@ -40,10 +40,15 @@ export default async function ProjetosPage({
 
     if (!project) redirect("/projetos");
 
-    const backParams = new URLSearchParams();
-    if (page && page !== "1") backParams.set("page", page);
-    if (search) backParams.set("search", search);
-    const backUrl = `/projetos${backParams.size > 0 ? `?${backParams.toString()}` : ""}`;
+    let backUrl: string;
+    if (back) {
+      backUrl = decodeURIComponent(back);
+    } else {
+      const backParams = new URLSearchParams();
+      if (page && page !== "1") backParams.set("page", page);
+      if (search) backParams.set("search", search);
+      backUrl = `/projetos${backParams.size > 0 ? `?${backParams.toString()}` : ""}`;
+    }
 
     return (
       <div>

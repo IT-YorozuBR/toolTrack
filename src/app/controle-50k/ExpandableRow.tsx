@@ -125,7 +125,7 @@ export function ExpandableRow({
           {formatNumber(Math.round(p.remainingStrokes))}
         </td>
         <td className="px-3 py-2">
-          <StatusBadge status={p.status} />
+          <StatusBadge status={p.status} size="sm" />
         </td>
         <td className="px-3 py-2 text-[10px] text-gray-600">
           {p.reachesLimitInMonth ?? "—"}

@@ -21,7 +21,23 @@
       "Bash(mkdir \"C:\\\\Users\\\\lucas.g\\\\projetos\\\\prensa-stroke\\\\src\\\\app\\\\projetos\\\\[id]\")",
       "Bash(mkdir \"C:\\\\Users\\\\lucas.g\\\\projetos\\\\prensa-stroke\\\\src\\\\app\\\\projetos\\\\[id]\\\\editar\")",
       "Bash(npx eslint *)",
-      "Bash(echo \"EXIT: $?\")"
+      "Bash(echo \"EXIT: $?\")",
+      "PowerShell(Get-Process *)",
+      "PowerShell($paths = @\\(\"$env:ProgramFiles\\\\Docker\\\\Docker\\\\Docker Desktop.exe\", \"$env:LOCALAPPDATA\\\\Docker\\\\Docker Desktop.exe\"\\); foreach \\($p in $paths\\) { if \\(Test-Path $p\\) { Write-Output \"FOUND: $p\" } else { Write-Output \"missing: $p\" } })",
+      "PowerShell(Start-Process \"C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe\"; Write-Output \"Docker Desktop iniciado, aguardando o engine...\")",
+      "PowerShell($ok=$false; for \\($i=0; $i -lt 40; $i++\\) { docker version --format '{{.Server.Version}}' 2>$null | Out-Null; if \\($?\\) { $v = docker version --format '{{.Server.Version}}' 2>$null; if \\($v\\) { Write-Output \"Engine pronto. Server version: $v\"; $ok=$true; break } }; Start-Sleep -Seconds 5 }; if \\(-not $ok\\) { Write-Output \"Ainda nao respondeu apos ~200s\" })",
+      "PowerShell(docker compose build *)",
+      "PowerShell(docker compose up *)",
+      "PowerShell(docker compose logs *)",
+      "PowerShell(docker compose exec *)",
+      "PowerShell(npx tsc --noEmit -p tsconfig.json 2>&1 | Select-Object -First 40)",
+      "PowerShell(npx tsc --noEmit -p tsconfig.json; Write-Output \"EXIT=$LASTEXITCODE\")",
+      "Bash(docker compose *)",
+      "Bash(netstat -ano)",
+      "Bash(powershell -Command \"Get-Service *postg* -ErrorAction SilentlyContinue | Select-Object Name,Status\")",
+      "PowerShell(npm test *)",
+      "PowerShell(npm run *)",
+      "Bash(echo \"EXIT=$?\")"
     ]
   }
 }

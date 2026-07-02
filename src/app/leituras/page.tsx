@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { ReadingToolGrid } from "./ReadingToolGrid";
 import { ReadingForm } from "./ReadingForm";
 import { ReadingList } from "./ReadingList";
+import { IgnoreReadingsToggle } from "./IgnoreReadingsToggle";
+import { BulkIgnoreReadingsToggle } from "./BulkIgnoreReadingsToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +29,7 @@ export default async function LeiturasPage({
         press: true,
         line: true,
         currentStrokes: true,
+        ignoreManualReadings: true,
         strokeReadings: {
           orderBy: { readingDate: "desc" },
           select: {
@@ -65,7 +68,8 @@ export default async function LeiturasPage({
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="max-w-xl">
+          <div className="max-w-xl space-y-6">
+            <IgnoreReadingsToggle toolId={tool.id} initialIgnored={tool.ignoreManualReadings} />
             <ReadingForm
               defaultTool={{
                 id: tool.id,
@@ -123,12 +127,19 @@ export default async function LeiturasPage({
   const tools = allTools.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
+  // Contagens globais (independem da busca/paginação) para o controle "todos".
+  const [activeTotal, ignoredCount] = await Promise.all([
+    prisma.tool.count({ where: { active: true } }),
+    prisma.tool.count({ where: { active: true, ignoreManualReadings: true } }),
+  ]);
+
   return (
     <div>
       <PageHeader
         title="Leituras de Batidas"
         description="Selecione um ferramental para registrar o acúmulo real de batidas e ver o histórico"
       />
+      <BulkIgnoreReadingsToggle ignoredCount={ignoredCount} total={activeTotal} />
       <ReadingToolGrid
         tools={tools}
         currentPage={currentPage}

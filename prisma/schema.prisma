@@ -18,6 +18,10 @@ model Tool {
   preventiveLimit   Int      @default(50000)
   warningLimit      Int      @default(45000)
   active            Boolean  @default(true)
+  // Quando true, as leituras manuais (ToolStrokeReading) deste ferramental são
+  // desconsideradas no Controle 50K (o acúmulo cai para o estimado). Os dados das
+  // leituras NÃO são excluídos — apenas ignorados na projeção.
+  ignoreManualReadings Boolean @default(false)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

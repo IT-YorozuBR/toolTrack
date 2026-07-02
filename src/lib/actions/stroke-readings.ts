@@ -38,6 +38,40 @@ export async function createStrokeReading(data: {
   }
 }
 
+// Liga/desliga o uso das leituras manuais deste ferramental no Controle 50K.
+// Não exclui nenhuma leitura — apenas marca para serem desconsideradas na projeção.
+export async function setIgnoreManualReadings(toolId: string, ignore: boolean) {
+  try {
+    await prisma.tool.update({
+      where: { id: toolId },
+      data: { ignoreManualReadings: ignore },
+    });
+    revalidatePath("/leituras");
+    revalidatePath("/controle-50k");
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch {
+    return { success: false, error: "Erro ao atualizar configuração das leituras." };
+  }
+}
+
+// Aplica o "desconsiderar leituras" a TODOS os ferramentais ativos de uma vez.
+// Não exclui nenhuma leitura — só liga/desliga o uso delas na projeção.
+export async function setAllIgnoreManualReadings(ignore: boolean) {
+  try {
+    await prisma.tool.updateMany({
+      where: { active: true },
+      data: { ignoreManualReadings: ignore },
+    });
+    revalidatePath("/leituras");
+    revalidatePath("/controle-50k");
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch {
+    return { success: false, error: "Erro ao atualizar os ferramentais." };
+  }
+}
+
 export async function deleteStrokeReading(id: string) {
   try {
     await prisma.toolStrokeReading.delete({ where: { id } });

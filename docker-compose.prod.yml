@@ -1,0 +1,42 @@
+# Compose de PRODUÇÃO (VM Ubuntu/Proxmox).
+# Usa a imagem já buildada (prensa-stroke:latest) — NÃO precisa do código-fonte na VM.
+# Leve para a VM apenas: este arquivo (renomeie para docker-compose.yml), o .env,
+# o prensa-stroke.tar (imagem) e, na 1ª vez, o backup_neon.backup.
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: prensa-stroke-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    image: prensa-stroke:latest
+    container_name: prensa-stroke
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

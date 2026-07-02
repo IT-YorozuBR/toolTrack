@@ -22,6 +22,18 @@ function getConnectionString() {
   }
 }
 
+// `sslmode=disable` na URL desliga o TLS explicitamente. Necessário para um
+// Postgres em container (ex.: docker-compose), cujo host não é localhost mas
+// também não oferece SSL. Lido da URL crua, antes do strip em getConnectionString.
+function sslExplicitlyDisabled(raw: string | undefined) {
+  if (!raw) return false;
+  try {
+    return new URL(raw).searchParams.get("sslmode") === "disable";
+  } catch {
+    return false;
+  }
+}
+
 // Local Postgres (localhost/127.0.0.1) typically has no TLS, while managed
 // providers like Neon require it. Enable SSL only for non-local hosts so the
 // same code works against both.
@@ -37,9 +49,10 @@ function needsSsl(connectionString: string | undefined) {
 
 function createPrismaClient() {
   const connectionString = getConnectionString();
+  const useSsl = !sslExplicitlyDisabled(process.env.DATABASE_URL) && needsSsl(connectionString);
   const pool = new pg.Pool({
     connectionString,
-    ssl: needsSsl(connectionString) ? { rejectUnauthorized: false } : false,
+    ssl: useSsl ? { rejectUnauthorized: false } : false,
   });
   const adapter = new PrismaPg(pool);
   // PrismaPg adapter type doesn't fully overlap with PrismaClientOptions

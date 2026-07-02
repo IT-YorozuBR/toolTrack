@@ -91,7 +91,7 @@ export function Controle50KFilters({ presses, availableMonths }: Props) {
         className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
       >
         <option value="">Todos os status</option>
-        <option value="OK">OK</option>
+        <option value="OK">BOSTA BOSTA</option>
         <option value="ATENCAO">Atenção</option>
         <option value="PROGRAMAR_PREVENTIVA">Programar Preventiva</option>
         <option value="VENCIDO">Vencido</option>
@@ -173,6 +173,10 @@ export function Controle50KFilters({ presses, availableMonths }: Props) {
         <optgroup label="Ferramental">
           <option value="code_asc">Ferramental A→Z</option>
           <option value="code_desc">Ferramental Z→A</option>
+        </optgroup>
+        <optgroup label="Atinge limite (50k)">
+          <option value="atinge_asc">Atinge 50k mais cedo (manutenção antes)</option>
+          <option value="atinge_desc">Atinge 50k mais tarde</option>
         </optgroup>
       </select>
 

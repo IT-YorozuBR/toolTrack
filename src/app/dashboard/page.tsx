@@ -19,7 +19,7 @@ import { Donut } from "@/components/charts/Donut";
 import { BarSeries } from "@/components/charts/BarSeries";
 import { formatNumber } from "@/lib/utils";
 import type { MaintenanceStatus, ToolProjection } from "@/lib/calculations/strokes";
-import { getDashboardData, type QualityIssue } from "./dashboard-data";
+import { getDashboardData, type QualityIssue, type SaldoBucket } from "./dashboard-data";
 import { DashboardFilters } from "./DashboardFilters";
 
 export const dynamic = "force-dynamic";
@@ -244,61 +244,30 @@ function ChartCard({
   );
 }
 
-function healthMeta(score: number) {
-  if (score >= 85) return { label: "Ótimo", color: "#16a34a" };
-  if (score >= 70) return { label: "Bom", color: "#2563eb" };
-  if (score >= 50) return { label: "Atenção", color: "#ea580c" };
-  return { label: "Crítico", color: "#dc2626" };
-}
-
-function HealthScoreCard({ score, total }: { score: number; total: number }) {
-  const meta = healthMeta(score);
-  const size = 132;
-  const stroke = 12;
-  const radius = (size - stroke) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const dash = (score / 100) * circumference;
-
+function SaldoDistributionCard({
+  buckets,
+  total,
+}: {
+  buckets: SaldoBucket[];
+  total: number;
+}) {
   return (
     <ChartCard
-      title="Health score da frota"
-      description="Índice ponderado pela criticidade dos status."
+      title="Distribuição do saldo 50K"
+      description="Ferramentais por faixa de saldo atual (limite − acúmulo de hoje)."
     >
-      <div className="flex items-center gap-5">
-        <div className="relative shrink-0" style={{ width: size, height: size }}>
-          <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
-            <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#f1f5f9" strokeWidth={stroke} />
-            <circle
-              cx={size / 2}
-              cy={size / 2}
-              r={radius}
-              fill="none"
-              stroke={meta.color}
-              strokeWidth={stroke}
-              strokeDasharray={`${dash} ${circumference}`}
-              strokeLinecap="round"
-            />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-3xl font-bold tabular-nums text-slate-900">{score}</span>
-            <span className="text-xs text-slate-400">de 100</span>
-          </div>
-        </div>
-        <div className="space-y-2">
-          <span
-            className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold"
-            style={{ backgroundColor: `${meta.color}1a`, color: meta.color }}
-          >
-            {meta.label}
-          </span>
-          <p className="text-sm text-slate-600">
-            Base: <strong className="text-slate-900">{formatNumber(total)}</strong> ferramentais no escopo.
-          </p>
-          <p className="text-xs text-slate-400">
-            Vencidos e erros de cadastro derrubam o índice; ferramentais OK o sustentam.
-          </p>
-        </div>
-      </div>
+      {total === 0 ? (
+        <EmptyPanel>Nenhum ferramental no escopo atual.</EmptyPanel>
+      ) : (
+        <BarSeries
+          items={buckets.map((bucket) => ({
+            label: bucket.label,
+            value: bucket.count,
+            highlight: bucket.urgent ? bucket.count : 0,
+          }))}
+          highlightLabel="crítico"
+        />
+      )}
     </ChartCard>
   );
 }
@@ -538,7 +507,7 @@ export default async function DashboardPage({
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
-        <HealthScoreCard score={data.healthScore} total={data.counts.total} />
+        <SaldoDistributionCard buckets={data.saldoDistribution} total={data.counts.total} />
 
         <ChartCard
           title="Distribuição por status"

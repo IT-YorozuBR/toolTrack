@@ -29,14 +29,15 @@ const STATUS_META: Record<MaintenanceStatus, { label: string; color: string }> =
   OK: { label: "OK", color: "#16a34a" },
 };
 
-// Peso de "saúde" por status (0–100). O health score é a média desses pesos.
-const HEALTH_WEIGHT: Record<MaintenanceStatus, number> = {
-  OK: 100,
-  ATENCAO: 65,
-  PROGRAMAR_PREVENTIVA: 40,
-  ERRO_CADASTRO: 30,
-  VENCIDO: 0,
-};
+// Faixas de saldo 50K atual (limite − acúmulo de hoje). Ordenadas do mais crítico
+// ao mais folgado. `urgent` marca as faixas que exigem ação (já vencido ou < 5k).
+const SALDO_BUCKETS: { label: string; min: number; max: number; urgent: boolean }[] = [
+  { label: "Vencido", min: -Infinity, max: 0, urgent: true },
+  { label: "< 5k", min: 0, max: 5000, urgent: true },
+  { label: "5–15k", min: 5000, max: 15000, urgent: false },
+  { label: "15–30k", min: 15000, max: 30000, urgent: false },
+  { label: "≥ 30k", min: 30000, max: Infinity, urgent: false },
+];
 
 const DONUT_ORDER: MaintenanceStatus[] = [
   "VENCIDO",
@@ -207,10 +208,21 @@ function buildStatusDistribution(projections: ToolProjection[]): StatusSlice[] {
   }));
 }
 
-function buildHealthScore(projections: ToolProjection[]): number {
-  if (projections.length === 0) return 100;
-  const total = projections.reduce((sum, p) => sum + HEALTH_WEIGHT[statusOf(p)], 0);
-  return Math.round(total / projections.length);
+export type SaldoBucket = {
+  label: string;
+  count: number;
+  urgent: boolean;
+};
+
+function buildSaldoDistribution(projections: ToolProjection[]): SaldoBucket[] {
+  return SALDO_BUCKETS.map((bucket) => ({
+    label: bucket.label,
+    urgent: bucket.urgent,
+    count: projections.filter((p) => {
+      const saldo = Math.round(p.currentRemainingStrokes);
+      return saldo >= bucket.min && saldo < bucket.max;
+    }).length,
+  }));
 }
 
 function distinctSorted(values: (string | null | undefined)[]): string[] {
@@ -342,7 +354,7 @@ export async function getDashboardData(filter: DashboardFilter = {}) {
 
   const planningBuckets = getPlanningBuckets(projections);
   const statusDistribution = buildStatusDistribution(projections);
-  const healthScore = buildHealthScore(projections);
+  const saldoDistribution = buildSaldoDistribution(projections);
 
   const qualityIssues = buildQualityIssues({
     projections,
@@ -373,7 +385,7 @@ export async function getDashboardData(filter: DashboardFilter = {}) {
     planningBuckets,
     qualityIssues,
     statusDistribution,
-    healthScore,
+    saldoDistribution,
     filterOptions,
     appliedFilter: filter,
   };
