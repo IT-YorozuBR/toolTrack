@@ -8,6 +8,7 @@ export async function fetchToolProjection(toolId: string): Promise<ToolProjectio
     include: {
       bomItems: {
         include: {
+          overrides: true,
           product: {
             include: {
               forecasts: true,

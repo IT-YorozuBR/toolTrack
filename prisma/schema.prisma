@@ -92,8 +92,27 @@ model BomItem {
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   tool    Tool    @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  overrides BomItemForecastOverride[]
 
   @@unique([productId, toolId])
+}
+
+// Sobrescreve, para um par Produto+Ferramenta e mes especifico, a demanda que
+// normalmente seria herdada do Projeto (ou do Produto, se nao houver projeto).
+// Usado quando a mesma ferramenta atende fracoes diferentes de demanda em
+// projetos distintos, ou tem contagem de cavidades/p-por-ciclo propria que
+// difere do restante do BOM daquele produto.
+model BomItemForecastOverride {
+  id              String   @id @default(cuid())
+  bomItemId       String
+  referenceMonth  DateTime
+  plannedQuantity Int
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  bomItem BomItem @relation(fields: [bomItemId], references: [id], onDelete: Cascade)
+
+  @@unique([bomItemId, referenceMonth])
 }
 
 model ProductionForecast {

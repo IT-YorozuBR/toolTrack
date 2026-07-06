@@ -135,7 +135,12 @@ export default async function VolumesPage({
         />
       ) : (
         <div className="space-y-4">
-          <ProjectVolumeGrid rows={rows} cols={cols} />
+          <ProjectVolumeGrid
+            rows={rows}
+            cols={cols}
+            windowStart={windowStart.toISOString()}
+            windowEnd={windowEnd.toISOString()}
+          />
           <Pagination currentPage={currentPage} totalPages={totalPages} buildPageUrl={buildPageUrl} />
         </div>
       )}

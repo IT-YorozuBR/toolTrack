@@ -74,6 +74,13 @@ export type ToolProjection = {
 
 type BomItemWithProduct = {
   quantityUsed: number;
+  // Sobrescreve, para este par Produto+Ferramenta, a demanda herdada do Projeto/Produto
+  // no mes indicado — usado quando a ferramenta atende uma fracao diferente da demanda
+  // do projeto (ferramenta compartilhada) ou tem contagem de cavidades propria.
+  overrides?: {
+    referenceMonth: Date;
+    plannedQuantity: number;
+  }[];
   product: {
     id: string;
     code: string;
@@ -187,6 +194,17 @@ export function calculateStrokesForMonth(
 
   let total = 0;
   for (const bomItem of tool.bomItems) {
+    const override = bomItem.overrides?.find(
+      (o) => toMonthKey(new Date(o.referenceMonth)) === monthKey,
+    );
+    if (override) {
+      // Override do par Produto+Ferramenta tem prioridade sobre Projeto/Produto —
+      // representa a demanda real desta ferramenta especifica naquele mes.
+      const strokes = (override.plannedQuantity * bomItem.quantityUsed) / tool.shotsPerStroke;
+      if (isFinite(strokes)) total += strokes;
+      continue;
+    }
+
     const projectProducts = bomItem.product.projectProducts;
     if (projectProducts && projectProducts.length > 0) {
       // Use project forecasts: sum over all projects this product belongs to
@@ -244,16 +262,12 @@ export function calculateForecastedStrokes(
     return calculateStrokesForMonth(tool, toMonthKey(referenceMonth));
   }
 
-  const windowKeys = new Set(getWindowDates().map((w) => w.key));
-  let total = 0;
-  for (const bomItem of tool.bomItems) {
-    for (const forecast of bomItem.product.forecasts) {
-      if (!windowKeys.has(toMonthKey(new Date(forecast.referenceMonth)))) continue;
-      const strokes = (forecast.plannedQuantity * bomItem.quantityUsed) / tool.shotsPerStroke;
-      if (isFinite(strokes)) total += strokes;
-    }
-  }
-  return total;
+  // Sem mes de referencia: soma a janela padrao de 4 meses usando a mesma regra de
+  // prioridade (override > Projeto > Produto) de calculateStrokesForMonth, em vez de
+  // duplicar a logica lendo so bomItem.product.forecasts (que ignorava ProjectForecast).
+  return getWindowDates()
+    .map((w) => calculateStrokesForMonth(tool, w.key))
+    .reduce((sum, strokes) => sum + strokes, 0);
 }
 
 export function getMaintenanceStatus(
@@ -607,12 +621,23 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
           }
         }
       }
+      const overriddenMonths = new Set(
+        (bomItem.overrides ?? []).map((o) => toMonthKey(new Date(o.referenceMonth))),
+      );
       const forecastSources = projectProducts && projectProducts.length > 0
         ? projectProducts.flatMap((pp) => pp.project.forecasts)
         : bomItem.product.forecasts;
       for (const forecast of forecastSources) {
         const key = toMonthKey(new Date(forecast.referenceMonth));
+        if (overriddenMonths.has(key)) continue; // override do BomItem substitui, nao soma
         const strokes = (forecast.plannedQuantity * bomItem.quantityUsed) / tool.shotsPerStroke;
+        if (!isFinite(strokes)) continue;
+        entry.strokesByMonth[key] = (entry.strokesByMonth[key] ?? 0) + strokes;
+        entry.totalStrokes += strokes;
+      }
+      for (const override of bomItem.overrides ?? []) {
+        const key = toMonthKey(new Date(override.referenceMonth));
+        const strokes = (override.plannedQuantity * bomItem.quantityUsed) / tool.shotsPerStroke;
         if (!isFinite(strokes)) continue;
         entry.strokesByMonth[key] = (entry.strokesByMonth[key] ?? 0) + strokes;
         entry.totalStrokes += strokes;

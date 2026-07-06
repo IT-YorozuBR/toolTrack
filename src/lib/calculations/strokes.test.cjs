@@ -522,4 +522,54 @@ describe("Controle 50K projection", () => {
       errors: ["Quantidade por shot invalida (deve ser maior que zero)"],
     });
   });
+
+  it("uses the BomItem override instead of the inherited forecast for the overridden month only", () => {
+    const tool = makeTool();
+    tool.bomItems[0].overrides = [{ referenceMonth: monthDate(2026, 7, 1), plannedQuantity: 4000 }];
+
+    const projection = getToolProjection(tool, monthDate(2026, 5, 20));
+
+    assert.deepStrictEqual(
+      projection.window.map(({ key, strokes }) => ({ key, strokes })),
+      [
+        { key: "2026-05", strokes: 5000 },
+        { key: "2026-06", strokes: 5000 },
+        { key: "2026-07", strokes: 2000 }, // override: 4000 * quantityUsed(1) / shotsPerStroke(2)
+        { key: "2026-08", strokes: 5000 },
+      ],
+    );
+  });
+
+  it("prefers the BomItem override over the project-level forecast when the product belongs to a project", () => {
+    const tool = makeTool({
+      bomItems: [
+        {
+          quantityUsed: 1,
+          overrides: [{ referenceMonth: monthDate(2026, 7, 1), plannedQuantity: 999 }],
+          product: {
+            id: "product-1",
+            code: "PROD-1",
+            forecasts: [],
+            projectProducts: [
+              {
+                project: {
+                  id: "project-1",
+                  name: "Projeto Teste",
+                  forecasts: [forecast(2026, 7, 10000)],
+                },
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    const strokes = calculateClosedMonthStrokes(tool, monthDate(2026, 6, 30));
+    // Sem override, o mes de junho nao tem forecast (projeto so tem julho) -> 0
+    assert.strictEqual(strokes, 0);
+
+    const projection = getToolProjection(tool, monthDate(2026, 7, 1));
+    const julyWindow = projection.window.find((w) => w.key === "2026-07");
+    assert.strictEqual(julyWindow.strokes, 499.5); // override: 999 * quantityUsed(1) / shotsPerStroke(2) — prevalece sobre os 10000 do ProjectForecast
+  });
 });

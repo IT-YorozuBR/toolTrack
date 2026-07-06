@@ -278,9 +278,13 @@ function ToolCard({
       {item.tool.description && (
         <p className="text-xs text-gray-500 mt-0.5 truncate">{item.tool.description}</p>
       )}
-      <p className="text-xs text-gray-400 mt-2">{item.tool.shotsPerStroke} cav/shot</p>
+      <p className="text-xs text-gray-400 mt-2" title="Cavidades da ferramenta — quantas peças ela produz por batida (DIVIDE o total de batidas). Editar em Ferramentais.">
+        {item.tool.shotsPerStroke} cav/shot
+      </p>
       <div className="flex items-center gap-2 mt-3">
-        <label className="text-xs text-gray-600 font-medium">Qtd.</label>
+        <label className="text-xs text-gray-600 font-medium" title="Quantas peças desta ferramenta o produto consome (MULTIPLICA o total de batidas). Não é cavidade.">
+          Qtd. usada/peça
+        </label>
         <input
           type="number"
           min="1"

@@ -83,6 +83,7 @@ export async function GET(request: NextRequest) {
   const toolInclude = {
     bomItems: {
       include: {
+        overrides: true,
         product: {
           include: {
             forecasts: true,

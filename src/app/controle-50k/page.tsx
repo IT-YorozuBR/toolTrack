@@ -67,6 +67,7 @@ export default async function Controle50KPage({
   const toolInclude = {
     bomItems: {
       include: {
+        overrides: true,
         product: {
           include: {
             forecasts: true,

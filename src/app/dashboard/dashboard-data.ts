@@ -243,6 +243,7 @@ export async function getDashboardData(filter: DashboardFilter = {}) {
   const toolInclude = {
     bomItems: {
       include: {
+        overrides: true,
         product: {
           include: {
             forecasts: true,

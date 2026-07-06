@@ -62,6 +62,9 @@ async function findToolsForMonthlyClosing(monthStart: Date, monthEnd: Date, incl
     include: {
       bomItems: {
         include: {
+          overrides: {
+            where: { referenceMonth: { gte: monthStart, lt: monthEnd } },
+          },
           product: {
             include: {
               forecasts: {
@@ -221,6 +224,7 @@ export async function autoEnsureMonthlySnapshots(referenceDate?: Date): Promise<
     include: {
       bomItems: {
         include: {
+          overrides: true,
           product: {
             include: {
               forecasts: true,

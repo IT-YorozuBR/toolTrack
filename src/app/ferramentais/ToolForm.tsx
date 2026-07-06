@@ -63,8 +63,13 @@ export function ToolForm({ tool }: { tool?: Tool }) {
         </div>
         */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Quantidade por Shot *</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Cavidades (peças por batida) *</label>
           <input name="shotsPerStroke" type="number" min="1" defaultValue={tool?.shotsPerStroke ?? 1} required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <p className="mt-1 text-xs text-gray-500">
+            Quantas peças ESTA FERRAMENTA produz em 1 batida (cavidade dupla = 2). DIVIDE o total de
+            batidas calculado. Não confundir com a &quot;quantidade usada&quot; do BOM (que MULTIPLICA,
+            e representa quantas peças desta ferramenta o produto consome).
+          </p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Batidas Atuais</label>

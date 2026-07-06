@@ -37,6 +37,7 @@ export default async function FerramentaisPage({
   const toolInclude = {
     bomItems: {
       include: {
+        overrides: true,
         product: {
           include: {
             forecasts: true,
