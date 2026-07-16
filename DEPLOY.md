@@ -34,24 +34,34 @@ Depois da configuração inicial já feita, todo deploy é isto:
 ```bash
 cd ~/toolTrack
 
-# 1. pega o código novo do GitHub
+# 1. marca a imagem atual (a que está rodando agora) como backup, ANTES de
+#    buildar a nova — é o que permite voltar rápido se o deploy quebrar
+#    (ver seção "Rollback" abaixo)
+docker tag prensa-stroke:latest "prensa-stroke:backup-$(date +%F-%H%M)"
+
+# 2. pega o código novo do GitHub
 git pull
 
-# 2. builda a imagem nova SEM derrubar o app antigo (fica no ar durante o build)
+# 3. builda a imagem nova SEM derrubar o app antigo (fica no ar durante o build)
 docker compose build
 
-# 3. sobe a imagem nova (recria só o que mudou; downtime de segundos)
+# 4. sobe a imagem nova (recria só o que mudou; downtime de segundos)
 docker compose up -d
 
-# 4. aplica migrations pendentes (ver seção "Migrations" abaixo)
+# 5. aplica migrations pendentes (ver seção "Migrations" abaixo)
 
-# 5. confere
+# 6. confere
 docker compose ps
 docker logs --tail=50 prensa-stroke
 ```
 
-> Se **não houver migration nova** naquele deploy, o passo 4 é dispensável.
-> Na dúvida, rodar o passo 4 é sempre seguro (é idempotente).
+> Se **não houver migration nova** naquele deploy, o passo 5 é dispensável.
+> Na dúvida, rodar o passo 5 é sempre seguro (é idempotente).
+>
+> O passo 1 é rápido (`docker tag` não copia dados, só cria um apelido para a
+> imagem) e é a rede de segurança principal: se o deploy novo quebrar o
+> sistema, dá pra voltar em segundos (ver **Rollback** abaixo) sem precisar
+> mexer no `~/prensa-stroke` antigo nem rebuildar nada.
 
 ---
 
@@ -104,8 +114,46 @@ docker logs -f prensa-stroke
 
 ## Rollback (voltar para o deploy antigo)
 
-O deploy antigo (imagem do `.tar`) fica em `~/prensa-stroke` como rede de segurança.
-O volume de dados é o mesmo, então **não há perda de dados** ao voltar.
+Se depois de um `docker compose up -d` a aplicação subir quebrada (erro 500 em
+tudo, container em crash loop, tela branca, etc.), volte para a imagem anterior
+o mais rápido possível — **não** tente debugar em produção com o sistema no ar quebrado.
+
+### Opção A — rollback rápido (tag local, recomendada)
+
+Só funciona se o passo 1 do deploy (`docker tag ... backup-...`) foi feito antes
+do build que quebrou. É o caminho normal: não perde dados, não precisa rebuildar,
+volta em segundos.
+
+```bash
+cd ~/toolTrack
+
+# 1. veja as tags de backup disponíveis (mais recente = maior data/hora)
+docker images prensa-stroke
+
+# 2. derruba o container quebrado
+docker compose down
+
+# 3. reaponta "latest" para a tag de backup escolhida
+docker tag prensa-stroke:backup-2026-07-15-1420 prensa-stroke:latest
+
+# 4. sobe de novo, agora com a imagem antiga
+docker compose up -d
+docker compose ps
+docker logs --tail=50 prensa-stroke
+```
+
+> Se uma migration nova foi aplicada nesse deploy, ela **não precisa** ser
+> revertida: colunas novas com valor padrão são simplesmente ignoradas pela
+> versão anterior do código. Só reverta a migration manualmente se o rollback
+> continuar dando erro por causa de uma mudança de schema incompatível
+> (ex.: coluna renomeada/removida) — nesse caso, restaure o `.sql` mais recente
+> (seção **Backup do banco**) em vez de mexer direto no schema.
+
+### Opção B — rollback via `.tar` antigo (fallback, se a Opção A não estiver disponível)
+
+O deploy antigo (pré-migração para deploy por código-fonte) fica em
+`~/prensa-stroke` como segunda rede de segurança. O volume de dados é o mesmo,
+então **não há perda de dados** ao voltar.
 
 ```bash
 # 1. derruba o deploy novo
@@ -122,6 +170,19 @@ docker compose ps
 
 > Migrations já aplicadas não atrapalham o código antigo: uma coluna nova com valor
 > padrão é simplesmente ignorada pela versão anterior.
+
+### Limpeza das tags de backup
+
+Tags de backup acumulam espaço em disco a cada deploy. Depois de confirmar que
+um deploy está estável (rodou bem por alguns dias), pode remover as tags antigas:
+
+```bash
+docker images prensa-stroke        # lista todas as tags
+docker rmi prensa-stroke:backup-2026-07-10-0930   # remove uma tag específica
+```
+
+> Manter pelo menos a tag de backup mais recente até o próximo deploy — é ela
+> que garante a volta rápida caso a versão atual quebre depois.
 
 ---
 

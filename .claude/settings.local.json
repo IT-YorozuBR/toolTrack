@@ -81,7 +81,10 @@
       "Bash(node ./_verify-teste2.cjs)",
       "Bash(rm ./_verify-teste2.cjs)",
       "Bash(docker exec prensa-stroke-db psql -U prensa -d prensa50k -t -A '-F|' -c ' *)",
-      "Bash(DATABASE_URL=\"postgresql://prensa:Lucas12!@localhost:5433/prensa50k?sslmode=disable\" node *)"
+      "Bash(DATABASE_URL=\"postgresql://prensa:Lucas12!@localhost:5433/prensa50k?sslmode=disable\" node *)",
+      "Bash(curl *)",
+      "Bash(git checkout *)",
+      "Bash(DATABASE_URL=\"postgresql://prensa:Lucas12!@localhost:5433/prensa50k\" node prisma/seed-demanda-fy26.cjs)"
     ]
   }
 }

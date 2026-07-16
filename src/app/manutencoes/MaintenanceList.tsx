@@ -1,6 +1,9 @@
+"use client";
+import { useState } from "react";
 import { formatNumber } from "@/lib/utils";
 import Link from "next/link";
 import { DeleteMaintenanceButton } from "./DeleteMaintenanceButton";
+import { EditMaintenanceModal } from "./EditMaintenanceModal";
 
 type MaintenanceRecord = {
   id: string;
@@ -37,6 +40,7 @@ function TypeBadge({ type }: { type: string }) {
 
 export function MaintenanceList({ tool, backUrl }: { tool: Tool; backUrl: string }) {
   const records = tool.maintenanceRecords;
+  const [editingRecord, setEditingRecord] = useState<MaintenanceRecord | null>(null);
 
   return (
     <>
@@ -114,16 +118,24 @@ export function MaintenanceList({ tool, backUrl }: { tool: Tool; backUrl: string
                       {r.notes ?? "—"}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      {idx === 0 ? (
-                        <DeleteMaintenanceButton id={r.id} />
-                      ) : (
-                        <span
-                          className="text-xs text-gray-300"
-                          title="Só é possível excluir a manutenção mais recente do ferramental."
+                      <span className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => setEditingRecord(r)}
+                          className="px-2 py-1 text-xs text-blue-600 hover:text-blue-800 hover:underline"
                         >
-                          —
-                        </span>
-                      )}
+                          Editar
+                        </button>
+                        {idx === 0 ? (
+                          <DeleteMaintenanceButton id={r.id} />
+                        ) : (
+                          <span
+                            className="text-xs text-gray-300"
+                            title="Só é possível excluir a manutenção mais recente do ferramental."
+                          >
+                            —
+                          </span>
+                        )}
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -131,6 +143,14 @@ export function MaintenanceList({ tool, backUrl }: { tool: Tool; backUrl: string
             </table>
           </div>
         </div>
+      )}
+
+      {editingRecord && (
+        <EditMaintenanceModal
+          record={editingRecord}
+          isLatest={editingRecord.id === records[0]?.id}
+          onClose={() => setEditingRecord(null)}
+        />
       )}
     </>
   );

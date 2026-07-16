@@ -173,3 +173,14 @@ model ToolStrokeReading {
 
   @@index([toolId, readingDate])
 }
+
+model AccessLog {
+  id        String   @id @default(cuid())
+  path      String
+  ip        String?
+  userAgent String?
+  referer   String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
