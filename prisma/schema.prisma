@@ -184,3 +184,24 @@ model AccessLog {
 
   @@index([createdAt])
 }
+
+// Trilha de auditoria de todas as alterações/movimentações de domínio
+// (criação, edição, exclusão) feitas via Server Actions. Não há login no
+// sistema, então "quem fez" é aproximado pelo IP de origem (mesma fonte do
+// AccessLog). `before`/`after` guardam o snapshot completo do registro
+// (JSON), suficiente para reconstruir o que mudou sem precisar de um schema
+// de diff dedicado.
+model AuditLog {
+  id         String   @id @default(cuid())
+  entity     String
+  entityId   String
+  action     String
+  summary    String?
+  before     Json?
+  after      Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entity, entityId])
+}

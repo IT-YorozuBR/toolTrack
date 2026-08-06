@@ -1,6 +1,7 @@
 "use server";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { logAudit } from "@/lib/audit";
 
 export async function upsertProductionForecast(data: {
   productId: string;
@@ -22,19 +23,30 @@ export async function upsertProductionForecast(data: {
       where: { productId: data.productId, referenceMonth: { gte: monthStart, lt: monthEnd } },
     });
 
+    const summary = `produto ${data.productId}, mês ${monthAnchor.toISOString().slice(0, 7)}`;
     if (existing) {
       if (data.plannedQuantity <= 0) {
         await prisma.productionForecast.delete({ where: { id: existing.id } });
+        await logAudit({ entity: "ProductionForecast", entityId: existing.id, action: "DELETE", summary, before: existing });
       } else {
-        await prisma.productionForecast.update({
+        const updated = await prisma.productionForecast.update({
           where: { id: existing.id },
           data: { plannedQuantity: data.plannedQuantity },
         });
+        await logAudit({
+          entity: "ProductionForecast",
+          entityId: existing.id,
+          action: "UPDATE",
+          summary,
+          before: existing,
+          after: updated,
+        });
       }
     } else if (data.plannedQuantity > 0) {
-      await prisma.productionForecast.create({
+      const created = await prisma.productionForecast.create({
         data: { productId: data.productId, referenceMonth: monthAnchor, plannedQuantity: data.plannedQuantity },
       });
+      await logAudit({ entity: "ProductionForecast", entityId: created.id, action: "CREATE", summary, after: created });
     }
 
     revalidatePath("/volumes");
@@ -53,6 +65,13 @@ export async function getForecasts() {
 export async function createProductionForecast(data: { productId: string; referenceMonth: Date; plannedQuantity: number }) {
   try {
     const forecast = await prisma.productionForecast.create({ data, include: { product: true } });
+    await logAudit({
+      entity: "ProductionForecast",
+      entityId: forecast.id,
+      action: "CREATE",
+      summary: `${forecast.product.code}, mês ${forecast.referenceMonth.toISOString().slice(0, 7)}`,
+      after: forecast,
+    });
     revalidatePath("/volumes");
     revalidatePath("/controle-50k");
     revalidatePath("/dashboard");
@@ -64,7 +83,16 @@ export async function createProductionForecast(data: { productId: string; refere
 
 export async function updateProductionForecast(id: string, data: { plannedQuantity: number }) {
   try {
+    const before = await prisma.productionForecast.findUnique({ where: { id }, include: { product: true } });
     const forecast = await prisma.productionForecast.update({ where: { id }, data, include: { product: true } });
+    await logAudit({
+      entity: "ProductionForecast",
+      entityId: id,
+      action: "UPDATE",
+      summary: `${forecast.product.code}, mês ${forecast.referenceMonth.toISOString().slice(0, 7)}`,
+      before,
+      after: forecast,
+    });
     revalidatePath("/volumes");
     revalidatePath("/controle-50k");
     revalidatePath("/dashboard");
@@ -76,7 +104,15 @@ export async function updateProductionForecast(id: string, data: { plannedQuanti
 
 export async function deleteProductionForecast(id: string) {
   try {
+    const before = await prisma.productionForecast.findUnique({ where: { id }, include: { product: true } });
     await prisma.productionForecast.delete({ where: { id } });
+    await logAudit({
+      entity: "ProductionForecast",
+      entityId: id,
+      action: "DELETE",
+      summary: before ? `${before.product.code}, mês ${before.referenceMonth.toISOString().slice(0, 7)}` : undefined,
+      before,
+    });
     revalidatePath("/volumes");
     revalidatePath("/controle-50k");
     revalidatePath("/dashboard");

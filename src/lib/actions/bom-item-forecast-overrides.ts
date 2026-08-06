@@ -1,6 +1,7 @@
 "use server";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { logAudit } from "@/lib/audit";
 
 export async function upsertBomItemForecastOverride(data: {
   bomItemId: string;
@@ -20,18 +21,41 @@ export async function upsertBomItemForecastOverride(data: {
       where: { bomItemId: data.bomItemId, referenceMonth: { gte: monthStart, lt: monthEnd } },
     });
 
+    const summary = `bomItem ${data.bomItemId}, mês ${monthAnchor.toISOString().slice(0, 7)}`;
     if (existing) {
       if (data.plannedQuantity <= 0) {
         await prisma.bomItemForecastOverride.delete({ where: { id: existing.id } });
+        await logAudit({
+          entity: "BomItemForecastOverride",
+          entityId: existing.id,
+          action: "DELETE",
+          summary,
+          before: existing,
+        });
       } else {
-        await prisma.bomItemForecastOverride.update({
+        const updated = await prisma.bomItemForecastOverride.update({
           where: { id: existing.id },
           data: { plannedQuantity: data.plannedQuantity },
         });
+        await logAudit({
+          entity: "BomItemForecastOverride",
+          entityId: existing.id,
+          action: "UPDATE",
+          summary,
+          before: existing,
+          after: updated,
+        });
       }
     } else if (data.plannedQuantity > 0) {
-      await prisma.bomItemForecastOverride.create({
+      const created = await prisma.bomItemForecastOverride.create({
         data: { bomItemId: data.bomItemId, referenceMonth: monthAnchor, plannedQuantity: data.plannedQuantity },
+      });
+      await logAudit({
+        entity: "BomItemForecastOverride",
+        entityId: created.id,
+        action: "CREATE",
+        summary,
+        after: created,
       });
     }
 

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { calculateClosedMonthStrokes, calculateForecastedStrokes, calculateStrokesForMonth, toMonthKey as calcMonthKey } from "@/lib/calculations/strokes";
 import { prisma } from "@/lib/prisma";
+import { logAudit } from "@/lib/audit";
 
 type ClosePreviousMonthOptions = {
   referenceDate?: Date;
@@ -360,9 +361,18 @@ export async function updateSnapshotActualStrokes(
   snapshotId: string,
   actualStrokes: number | null,
 ): Promise<void> {
-  await prisma.toolMonthlyStrokeSnapshot.update({
+  const before = await prisma.toolMonthlyStrokeSnapshot.findUnique({ where: { id: snapshotId } });
+  const snapshot = await prisma.toolMonthlyStrokeSnapshot.update({
     where: { id: snapshotId },
     data: { actualStrokes },
+  });
+  await logAudit({
+    entity: "ToolMonthlyStrokeSnapshot",
+    entityId: snapshotId,
+    action: "UPDATE",
+    summary: `ferramental ${snapshot.toolId}, mês ${snapshot.referenceMonth.toISOString().slice(0, 7)}: actualStrokes = ${actualStrokes}`,
+    before,
+    after: snapshot,
   });
   revalidatePath("/controle-50k");
   revalidatePath("/fechamento-mensal");

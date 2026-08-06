@@ -6,6 +6,7 @@ import {
   calculateStrokesForMonth,
   toMonthKey,
 } from "@/lib/calculations/strokes";
+import { logAudit } from "@/lib/audit";
 
 function startOfMonth(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), 1);
@@ -126,6 +127,14 @@ export async function createMaintenanceRecord(data: {
       return created;
     });
 
+    await logAudit({
+      entity: "MaintenanceRecord",
+      entityId: record.id,
+      action: "CREATE",
+      summary: `${tool.code}: ${data.maintenanceType}${data.resetCounter ?? true ? " (zera contador)" : ""}`,
+      after: record,
+    });
+
     revalidatePath("/manutencoes");
     revalidatePath("/controle-50k");
     revalidatePath("/dashboard");
@@ -197,6 +206,14 @@ export async function updateMaintenanceRecord(
           responsible: data.responsible,
           notes: data.notes,
         },
+      });
+      await logAudit({
+        entity: "MaintenanceRecord",
+        entityId: id,
+        action: "UPDATE",
+        summary: `${data.maintenanceType} (só metadados)`,
+        before: existing,
+        after: record,
       });
       revalidatePath("/manutencoes");
       return { success: true, data: record };
@@ -307,6 +324,15 @@ export async function updateMaintenanceRecord(
       return updated;
     });
 
+    await logAudit({
+      entity: "MaintenanceRecord",
+      entityId: id,
+      action: "UPDATE",
+      summary: `${tool.code}: ${data.maintenanceType} (altera ciclo)`,
+      before: existing,
+      after: record,
+    });
+
     revalidatePath("/manutencoes");
     revalidatePath("/controle-50k");
     revalidatePath("/dashboard");
@@ -367,6 +393,14 @@ export async function deleteMaintenanceRecord(id: string) {
           data: { currentStrokes: record.previousStrokes ?? record.strokesAtMaintenance },
         });
       }
+    });
+
+    await logAudit({
+      entity: "MaintenanceRecord",
+      entityId: id,
+      action: "DELETE",
+      summary: `ferramental ${record.toolId}`,
+      before: record,
     });
 
     revalidatePath("/manutencoes");

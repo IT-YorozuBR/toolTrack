@@ -1,6 +1,7 @@
 "use server";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { logAudit } from "@/lib/audit";
 
 export async function getStrokeReadings(toolId: string) {
   return prisma.toolStrokeReading.findMany({
@@ -29,6 +30,14 @@ export async function createStrokeReading(data: {
       },
     });
 
+    await logAudit({
+      entity: "ToolStrokeReading",
+      entityId: record.id,
+      action: "CREATE",
+      summary: `ferramental ${data.toolId}: ${data.cycleStrokes} batidas`,
+      after: record,
+    });
+
     revalidatePath("/leituras");
     revalidatePath("/controle-50k");
     revalidatePath("/dashboard");
@@ -42,9 +51,16 @@ export async function createStrokeReading(data: {
 // Não exclui nenhuma leitura — apenas marca para serem desconsideradas na projeção.
 export async function setIgnoreManualReadings(toolId: string, ignore: boolean) {
   try {
-    await prisma.tool.update({
+    const tool = await prisma.tool.update({
       where: { id: toolId },
       data: { ignoreManualReadings: ignore },
+    });
+    await logAudit({
+      entity: "Tool",
+      entityId: toolId,
+      action: "UPDATE",
+      summary: `${tool.code}: ignoreManualReadings = ${ignore}`,
+      after: tool,
     });
     revalidatePath("/leituras");
     revalidatePath("/controle-50k");
@@ -63,6 +79,13 @@ export async function setAllIgnoreManualReadings(ignore: boolean) {
       where: { active: true },
       data: { ignoreManualReadings: ignore },
     });
+    await logAudit({
+      entity: "Tool",
+      entityId: "*",
+      action: "UPDATE",
+      summary: `todos os ferramentais ativos: ignoreManualReadings = ${ignore}`,
+      after: { ignoreManualReadings: ignore },
+    });
     revalidatePath("/leituras");
     revalidatePath("/controle-50k");
     revalidatePath("/dashboard");
@@ -74,7 +97,15 @@ export async function setAllIgnoreManualReadings(ignore: boolean) {
 
 export async function deleteStrokeReading(id: string) {
   try {
+    const before = await prisma.toolStrokeReading.findUnique({ where: { id } });
     await prisma.toolStrokeReading.delete({ where: { id } });
+    await logAudit({
+      entity: "ToolStrokeReading",
+      entityId: id,
+      action: "DELETE",
+      summary: before ? `ferramental ${before.toolId}: ${before.cycleStrokes} batidas` : undefined,
+      before,
+    });
     revalidatePath("/leituras");
     revalidatePath("/controle-50k");
     revalidatePath("/dashboard");

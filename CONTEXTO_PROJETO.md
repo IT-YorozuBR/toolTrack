@@ -77,6 +77,8 @@ cada nível e um mecanismo de exceção pontual.
 - **`ToolStrokeReading`** — leitura manual de batidas no meio do ciclo (ajuste pontual,
   não confundir com manutenção).
 - **`AccessLog`** — log de acesso simples (path, ip, user-agent, referer), ver seção 6.
+- **`AuditLog`** — trilha de auditoria de alterações de domínio (criação/edição/exclusão),
+  ver seção 6.
 
 ## 4. Mapa de páginas (`src/app/`)
 
@@ -96,6 +98,7 @@ cada nível e um mecanismo de exceção pontual.
 | `/historico-demanda` | histórico de demanda |
 | `/manual` | manual de uso do sistema |
 | `/painel-x9k3m2` | painel oculto (nome ofuscado de propósito) de logs de acesso, protegido por `?key=` (`ACCESS_LOG_ADMIN_KEY`), com resolução de hostname reverso por IP |
+| `/painel-alteracoes-k7q2j9` | painel oculto de auditoria (log de alterações), protegido por `?key=` (`AUDIT_LOG_ADMIN_KEY`), ver seção 6 |
 
 > **Nota sobre `ManutencaoRow.tsx` e `ManutencaoFilters.tsx`** (em `src/app/manutencoes/`):
 > são componentes **não usados** (código morto — `page.tsx` usa `ToolGrid` +
@@ -130,6 +133,22 @@ Adicionado: `src/proxy.ts` (Routing Middleware) intercepta toda navegação (exc
 (migration `20260706170524_add_access_log`). Consulta em `/painel-x9k3m2?key=...`
 (chave em `ACCESS_LOG_ADMIN_KEY`, com fallback hardcoded `prensa50k-acessos` — **trocar
 a env var em produção** se isso for levado a sério como controle de acesso).
+
+**Log de alterações (auditoria), adicionado 2026-08-06**: `src/lib/audit.ts` expõe
+`logAudit({ entity, entityId, action, summary, before, after })`, chamado ao final de toda
+Server Action que cria/edita/exclui um registro de domínio (Tool, Project, Product,
+BomItem, BomItemForecastOverride, ProductionForecast, ProjectForecast, ProjectProduct,
+MaintenanceRecord, ToolStrokeReading, ToolMonthlyStrokeSnapshot). Grava em `AuditLog`
+(migration `20260806101517_add_audit_log`) com IP de origem (mesma fonte do
+`x-forwarded-for` usada no AccessLog — não há login no sistema, então "quem fez" é só o
+IP). `before`/`after` guardam o snapshot completo do registro (JSON), não um diff
+campo-a-campo. `logAudit` nunca lança — falha ao gravar log não derruba a ação.
+Consulta em `/painel-alteracoes-k7q2j9?key=...` (chave em `AUDIT_LOG_ADMIN_KEY`, fallback
+hardcoded `prensa50k-alteracoes` — trocar em produção), com filtro por entidade/ação e
+expansão do JSON antes/depois por linha.
+
+> Se criar uma nova Server Action de escrita, adicionar a chamada `logAudit`
+> correspondente — não há hook automático (Prisma middleware/`$extends`) fazendo isso hoje.
 
 ## 7. Frentes em andamento / pendências conhecidas
 

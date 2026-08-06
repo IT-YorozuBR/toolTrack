@@ -1,6 +1,7 @@
 "use server";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { logAudit } from "@/lib/audit";
 
 export async function getProducts() {
   return prisma.product.findMany({ orderBy: { code: "asc" } });
@@ -31,7 +32,11 @@ export async function upsertProductWithBom(
   }
 
   try {
-    await prisma.$transaction(async (tx) => {
+    const wasCreate = !productId;
+    const before = productId
+      ? await prisma.product.findUnique({ where: { id: productId }, include: { bomItems: true } })
+      : null;
+    const finalId = await prisma.$transaction(async (tx) => {
       let id = productId;
       if (id) {
         await tx.product.update({ where: { id }, data });
@@ -47,6 +52,16 @@ export async function upsertProductWithBom(
           quantityUsed: item.quantityUsed,
         })),
       });
+      return id!;
+    });
+
+    await logAudit({
+      entity: "Product",
+      entityId: finalId,
+      action: wasCreate ? "CREATE" : "UPDATE",
+      summary: `${data.code} (BOM: ${items.length} ferramenta(s))`,
+      before,
+      after: { ...data, bomItems: items },
     });
 
     revalidatePath("/produtos");
@@ -64,6 +79,7 @@ export async function upsertProductWithBom(
 export async function createProduct(data: { code: string; modelo?: string; description?: string }) {
   try {
     const product = await prisma.product.create({ data });
+    await logAudit({ entity: "Product", entityId: product.id, action: "CREATE", summary: product.code, after: product });
     revalidatePath("/produtos");
     revalidatePath("/dashboard");
     return { success: true, data: product };
@@ -79,7 +95,9 @@ export async function updateProduct(
   data: { code?: string; modelo?: string; description?: string }
 ) {
   try {
+    const before = await prisma.product.findUnique({ where: { id } });
     const product = await prisma.product.update({ where: { id }, data });
+    await logAudit({ entity: "Product", entityId: id, action: "UPDATE", summary: product.code, before, after: product });
     revalidatePath("/produtos");
     revalidatePath("/dashboard");
     return { success: true, data: product };
@@ -93,7 +111,8 @@ export async function updateProduct(
 /** Soft delete: marca active=false. */
 export async function deactivateProduct(id: string) {
   try {
-    await prisma.product.update({ where: { id }, data: { active: false } });
+    const product = await prisma.product.update({ where: { id }, data: { active: false } });
+    await logAudit({ entity: "Product", entityId: id, action: "UPDATE", summary: `${product.code}: desativado`, after: product });
     revalidatePath("/produtos");
     revalidatePath("/controle-50k");
     revalidatePath("/dashboard");
@@ -105,7 +124,14 @@ export async function deactivateProduct(id: string) {
 
 export async function toggleProductActive(id: string, active: boolean) {
   try {
-    await prisma.product.update({ where: { id }, data: { active } });
+    const product = await prisma.product.update({ where: { id }, data: { active } });
+    await logAudit({
+      entity: "Product",
+      entityId: id,
+      action: "UPDATE",
+      summary: `${product.code}: ${active ? "ativado" : "desativado"}`,
+      after: product,
+    });
     revalidatePath("/produtos");
     revalidatePath("/controle-50k");
     revalidatePath("/dashboard");
