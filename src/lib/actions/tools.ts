@@ -104,3 +104,40 @@ export async function toggleToolActive(id: string, active: boolean) {
     return { success: false, error: "Erro ao alterar status do ferramental." };
   }
 }
+
+/** Mesmo filtro usado na listagem de /ferramentais (código, prensa, linha, descrição). */
+function buildToolSearchWhere(search: string) {
+  const searchTerm = search.trim();
+  return searchTerm
+    ? {
+        OR: [
+          { code: { contains: searchTerm, mode: "insensitive" as const } },
+          { press: { contains: searchTerm, mode: "insensitive" as const } },
+          { line: { contains: searchTerm, mode: "insensitive" as const } },
+          { description: { contains: searchTerm, mode: "insensitive" as const } },
+        ],
+      }
+    : {};
+}
+
+/** Retorna todos os IDs que batem com a busca (sem paginação) — usado pelo "selecionar todos". */
+export async function getToolIdsBySearch(search: string): Promise<string[]> {
+  const tools = await prisma.tool.findMany({
+    where: buildToolSearchWhere(search),
+    select: { id: true },
+  });
+  return tools.map((t) => t.id);
+}
+
+export async function bulkSetToolsActive(ids: string[], active: boolean) {
+  if (ids.length === 0) return { success: true };
+  try {
+    await prisma.tool.updateMany({ where: { id: { in: ids } }, data: { active } });
+    revalidatePath("/ferramentais");
+    revalidatePath("/controle-50k");
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch {
+    return { success: false, error: "Erro ao alterar status dos ferramentais selecionados." };
+  }
+}

@@ -3,6 +3,8 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { redirect } from "next/navigation";
 import { ToolGrid } from "./ToolGrid";
 import { MaintenanceList } from "./MaintenanceList";
+import { ProjectMaintenanceTree } from "./ProjectMaintenanceTree";
+import { ViewToggle } from "./ViewToggle";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -12,9 +14,9 @@ const PAGE_SIZE = 20;
 export default async function ManutencoesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; page?: string; ferramenta?: string }>;
+  searchParams: Promise<{ search?: string; page?: string; ferramenta?: string; view?: string }>;
 }) {
-  const { search, page, ferramenta } = await searchParams;
+  const { search, page, ferramenta, view } = await searchParams;
 
   /* ── Vista de manutenções de um ferramental ── */
   if (ferramenta) {
@@ -59,9 +61,41 @@ export default async function ManutencoesPage({
     );
   }
 
-  /* ── Vista de grade de ferramentais ── */
+  /* ── Vista de grade de ferramentais (lista ou árvore por projeto) ── */
   const currentPage = Math.max(1, parseInt(page ?? "1"));
   const searchTerm = search?.trim() ?? "";
+  const isTreeView = view === "tree";
+
+  const header = (
+    <PageHeader
+      title="Manutenções"
+      description="Selecione um ferramental para ver o histórico de manutenções"
+      action={
+        <Link
+          href="/manutencoes/nova"
+          className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700"
+        >
+          + Registrar Manutenção
+        </Link>
+      }
+    />
+  );
+
+  if (isTreeView) {
+    const projects = await prisma.project.findMany({
+      where: { active: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    });
+
+    return (
+      <div>
+        {header}
+        <ViewToggle current="tree" />
+        <ProjectMaintenanceTree projects={projects} />
+      </div>
+    );
+  }
 
   const where = searchTerm
     ? {
@@ -104,18 +138,8 @@ export default async function ManutencoesPage({
 
   return (
     <div>
-      <PageHeader
-        title="Manutenções"
-        description="Selecione um ferramental para ver o histórico de manutenções"
-        action={
-          <Link
-            href="/manutencoes/nova"
-            className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700"
-          >
-            + Registrar Manutenção
-          </Link>
-        }
-      />
+      {header}
+      <ViewToggle current="list" />
       <ToolGrid
         tools={tools}
         currentPage={currentPage}

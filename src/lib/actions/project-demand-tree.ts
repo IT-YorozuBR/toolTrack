@@ -89,3 +89,31 @@ export async function getProjectDemandTree(
     })),
   }));
 }
+
+export type ProjectToolTreeRow = {
+  productId: string;
+  productCode: string;
+  tools: { toolId: string; toolCode: string }[];
+};
+
+// Versao enxuta da arvore Produto -> Ferramenta, sem overrides/janela de meses —
+// usada onde só se precisa navegar (ex.: escolher uma ferramenta em /manutencoes),
+// não editar previsão.
+export async function getProjectToolTree(projectId: string): Promise<ProjectToolTreeRow[]> {
+  const products = await prisma.product.findMany({
+    where: { active: true, projectProducts: { some: { projectId } } },
+    include: {
+      bomItems: {
+        include: { tool: { select: { id: true, code: true } } },
+        orderBy: { tool: { code: "asc" } },
+      },
+    },
+    orderBy: { code: "asc" },
+  });
+
+  return products.map((p) => ({
+    productId: p.id,
+    productCode: p.code,
+    tools: p.bomItems.map((bi) => ({ toolId: bi.tool.id, toolCode: bi.tool.code })),
+  }));
+}
