@@ -34,8 +34,11 @@ services:
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
-    ports:
-      - "3000:3000"
+    # Sem "ports": o app não fica publicado no host, só acessível dentro do
+    # Docker. NPM alcança via rede compartilhada "npm_network" abaixo.
+    networks:
+      - default
+      - npm_network
     # Só sobe a aplicação depois que o banco estiver realmente pronto.
     depends_on:
       db:
@@ -47,3 +50,11 @@ services:
 
 volumes:
   pgdata:
+
+networks:
+  default: {}
+  # Rede do Nginx Proxy Manager (definida em /opt/nginx-proxy-manager na VM).
+  # external: true = não recriar, só se conectar à que já existe.
+  npm_network:
+    external: true
+    name: nginx-proxy-manager_default

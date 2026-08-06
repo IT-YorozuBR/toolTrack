@@ -18,6 +18,7 @@ o servidor clona o repositório do GitHub e builda a imagem Docker localmente.
 | Volume dos dados | `prensa-stroke_pgdata` |
 | Rede | `prensa-stroke_default` |
 | Project name (Compose) | `prensa-stroke` (fixado no `.env`) |
+| Proxy reverso | Nginx Proxy Manager (NPM), na VM, rede externa `nginx-proxy-manager_default` |
 
 > **Por que `COMPOSE_PROJECT_NAME=prensa-stroke`?**
 > O Compose prefixa o nome do volume com o nome do projeto (por padrão, o nome da
@@ -62,6 +63,41 @@ docker logs --tail=50 prensa-stroke
 > imagem) e é a rede de segurança principal: se o deploy novo quebrar o
 > sistema, dá pra voltar em segundos (ver **Rollback** abaixo) sem precisar
 > mexer no `~/prensa-stroke` antigo nem rebuildar nada.
+
+---
+
+## Nginx Proxy Manager (NPM)
+
+O app não publica mais a porta 3000 no host — ele só é acessível dentro do Docker,
+via rede compartilhada `npm_network` (externa, aponta para `nginx-proxy-manager_default`).
+
+Ao criar/editar o Proxy Host no NPM:
+
+| Campo | Valor |
+|---|---|
+| Forward Hostname / IP | `prensa-stroke` (nome do container do app) |
+| Forward Port | `3000` |
+
+> Como o NPM está na mesma rede Docker (`npm_network`), ele resolve `prensa-stroke`
+> pelo DNS interno do Docker — não use IP do host nem `localhost` aqui.
+
+**Pré-requisito no servidor:** a rede externa precisa existir antes do primeiro
+`docker compose up -d` (ela já existe se o NPM estiver rodando em `/opt/nginx-proxy-manager`
+na VM). Se faltar, criar com:
+```bash
+docker network create nginx-proxy-manager_default
+```
+(normalmente desnecessário — o compose do próprio NPM já cria essa rede).
+
+> **Dev local (Windows):** a rede `npm_network` não existe na sua máquina, então
+> `docker compose up` vai falhar tentando se conectar a ela. Crie uma rede vazia
+> com o mesmo nome só para rodar localmente:
+> ```bash
+> docker network create nginx-proxy-manager_default
+> ```
+> Sem NPM local, o app fica sem porta publicada — para testar localmente, adicione
+> temporariamente `ports: ["3000:3000"]` de volta no serviço `app` ou rode
+> `docker compose exec app sh` para inspecionar por dentro.
 
 ---
 
