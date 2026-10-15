@@ -52,7 +52,7 @@ export function MaintenanceList({ tool, backUrl }: { tool: Tool; backUrl: string
           <div>
             <h2 className="text-lg font-semibold text-gray-900">{tool.code}</h2>
             <p className="text-sm text-gray-500 mt-0.5">
-              {[tool.description, tool.press, tool.line].filter(Boolean).join(" — ")}
+              {[tool.description, tool.line].filter(Boolean).join(" — ")}
             </p>
           </div>
         </div>

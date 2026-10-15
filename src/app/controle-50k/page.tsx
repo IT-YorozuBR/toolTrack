@@ -90,6 +90,7 @@ export default async function Controle50KPage({
     monthlySnapshots: {
       orderBy: { referenceMonth: "asc" as const },
     },
+    scheduledMaintenances: { where: { status: "PENDING" }, take: 1 },
     strokeReadings: {
       // Só a leitura mais recente do ciclo é usada na projeção; manter as últimas
       // poucas evita carregar o histórico inteiro (cresce indefinidamente) por load.
@@ -288,6 +289,10 @@ export default async function Controle50KPage({
         <span className="inline-flex items-center gap-1">
           <span className="rounded bg-indigo-100 px-1 py-0.5 text-[9px] font-semibold text-indigo-700 ring-1 ring-indigo-300">🔧</span>
           ciclo reiniciado nos últimos 30 dias (acúmulo ainda parcial)
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="rounded bg-sky-100 px-1 py-0.5 text-[9px] font-semibold text-sky-700 ring-1 ring-sky-300">🗓</span>
+          preventiva agendada (conta como feita até ser confirmada ou cancelada; em vermelho se o mês já passou)
         </span>
         <span className="inline-flex items-center gap-1">
           <span className="rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold text-amber-700 ring-1 ring-amber-300">⚠ Nd</span>

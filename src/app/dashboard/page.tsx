@@ -1,13 +1,10 @@
 import Link from "next/link";
 import {
-  Activity,
-  AlertTriangle,
   ArrowRight,
-  CalendarClock,
   CheckCircle2,
   ClipboardList,
   Database,
-  Gauge,
+  TriangleAlert,
   Wrench,
   XCircle,
   type LucideIcon,
@@ -15,12 +12,22 @@ import {
 
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { Donut } from "@/components/charts/Donut";
-import { BarSeries } from "@/components/charts/BarSeries";
+import { HorizontalBars, type HorizontalBarItem } from "@/components/charts/HorizontalBars";
+import { MaintenanceTrendChart } from "@/components/charts/MaintenanceTrendChart";
 import { formatNumber } from "@/lib/utils";
 import type { MaintenanceStatus, ToolProjection } from "@/lib/calculations/strokes";
-import { getDashboardData, type QualityIssue, type SaldoBucket } from "./dashboard-data";
+import {
+  getDashboardData,
+  getMaintenanceMonthlyTrend,
+  getToolMaintenanceHistory,
+  getToolMaintenanceOptions,
+  type QualityIssue,
+  type SaldoBucket,
+  type StatusSlice,
+} from "./dashboard-data";
 import { DashboardFilters } from "./DashboardFilters";
+import { MaintenanceForecastPanel } from "./MaintenanceForecastPanel";
+import { ToolMaintenanceChart } from "./ToolMaintenanceChart";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +36,23 @@ const ACTION_STATUS: MaintenanceStatus[] = [
   "PROGRAMAR_PREVENTIVA",
   "ATENCAO",
 ];
+
+// Ordem operacional para a lista de status (mais crítico primeiro).
+const STATUS_PRIORITY: Record<MaintenanceStatus, number> = {
+  VENCIDO: 0,
+  ATENCAO: 1,
+  PROGRAMAR_PREVENTIVA: 2,
+  ERRO_CADASTRO: 3,
+  OK: 4,
+};
+
+const SALDO_COLORS: Record<string, string> = {
+  Vencido: "#dc2626",
+  "< 5k": "#ea580c",
+  "5–15k": "#f59e0b",
+  "15–30k": "#3b82f6",
+  "≥ 30k": "#16a34a",
+};
 
 const issueToneStyles: Record<QualityIssue["tone"], string> = {
   red: "border-red-200 bg-red-50 text-red-900",
@@ -42,54 +66,13 @@ function formatDate(date: string | Date | null): string {
   return new Date(date).toLocaleDateString("pt-BR");
 }
 
-function priorityHref(status: MaintenanceStatus) {
-  return `/controle-50k?status=${status}`;
+function pctOf(value: number, total: number): string {
+  if (total <= 0) return "0%";
+  return `${(Math.round((value / total) * 1000) / 10).toLocaleString("pt-BR")}%`;
 }
 
-function KpiCard({
-  title,
-  value,
-  description,
-  href,
-  icon: Icon,
-  tone = "default",
-}: {
-  title: string;
-  value: number;
-  description: string;
-  href: string;
-  icon: LucideIcon;
-  tone?: "default" | "green" | "yellow" | "orange" | "red" | "blue";
-}) {
-  const tones = {
-    default: "border-slate-200 bg-white text-slate-900",
-    green: "border-green-200 bg-green-50 text-green-900",
-    yellow: "border-yellow-200 bg-yellow-50 text-yellow-900",
-    orange: "border-orange-200 bg-orange-50 text-orange-900",
-    red: "border-red-200 bg-red-50 text-red-900",
-    blue: "border-blue-200 bg-blue-50 text-blue-900",
-  };
-
-  return (
-    <Link
-      href={href}
-      className={`group rounded-lg border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${tones[tone]}`}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide opacity-70">{title}</p>
-          <p className="mt-2 text-3xl font-bold tabular-nums">{formatNumber(value)}</p>
-        </div>
-        <span className="rounded-md bg-white/70 p-2 ring-1 ring-black/5">
-          <Icon className="h-5 w-5" />
-        </span>
-      </div>
-      <div className="mt-3 flex items-center justify-between gap-3 text-xs opacity-75">
-        <span>{description}</span>
-        <ArrowRight className="h-4 w-4 shrink-0 transition group-hover:translate-x-0.5" />
-      </div>
-    </Link>
-  );
+function priorityHref(status: MaintenanceStatus) {
+  return `/controle-50k?status=${status}`;
 }
 
 function Section({
@@ -125,98 +108,6 @@ function EmptyPanel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ActionTable({ items }: { items: ToolProjection[] }) {
-  if (items.length === 0) {
-    return (
-      <EmptyPanel>
-        Nenhum ferramental vencido, em preventiva ou em atenção no momento.
-      </EmptyPanel>
-    );
-  }
-
-  return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Ferramental</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Prensa</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-slate-500">Saldo atual</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-slate-500">Saldo projetado</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Status</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Atinge</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Ação</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {items.map((item) => (
-              <tr key={item.toolId} className="hover:bg-slate-50">
-                <td className="px-4 py-3">
-                  <p className="font-medium text-slate-900">{item.code}</p>
-                  {item.description && (
-                    <p className="mt-0.5 max-w-56 truncate text-xs text-slate-500" title={item.description}>
-                      {item.description}
-                    </p>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-slate-600">{item.press}</td>
-                <td
-                  className={`px-4 py-3 text-right font-semibold tabular-nums ${
-                    item.currentRemainingStrokes < 0
-                      ? "text-red-600"
-                      : item.currentRemainingStrokes < 5000
-                      ? "text-orange-600"
-                      : "text-slate-900"
-                  }`}
-                >
-                  {formatNumber(Math.round(item.currentRemainingStrokes))}
-                </td>
-                <td
-                  className={`px-4 py-3 text-right font-semibold tabular-nums ${
-                    item.remainingStrokes < 0
-                      ? "text-red-600"
-                      : item.remainingStrokes < 5000
-                      ? "text-orange-600"
-                      : "text-slate-900"
-                  }`}
-                >
-                  {formatNumber(Math.round(item.remainingStrokes))}
-                </td>
-                <td className="px-4 py-3">
-                  <StatusBadge status={item.effectiveStatus} />
-                  {item.statusFromEstimate && (
-                    <span className="ml-1 align-middle text-[10px] font-medium text-slate-400">est.</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-slate-600">{item.reachesLimitInMonth ?? "—"}</td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-wrap gap-2">
-                    {ACTION_STATUS.includes(item.effectiveStatus) && (
-                      <Link
-                        href={`/manutencoes/nova?toolId=${item.toolId}`}
-                        className="rounded-md bg-orange-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-orange-700"
-                      >
-                        Registrar manutenção
-                      </Link>
-                    )}
-                    <Link
-                      href={`/controle-50k?search=${encodeURIComponent(item.code)}`}
-                      className="rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      Ver 50K
-                    </Link>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
 function ChartCard({
   title,
   description,
@@ -244,31 +135,159 @@ function ChartCard({
   );
 }
 
-function SaldoDistributionCard({
-  buckets,
+/** KPI principal. `emphasis` deixa o card de Vencidos com mais peso visual. */
+function KpiCard({
+  title,
+  value,
   total,
+  hint,
+  href,
+  cta,
+  icon: Icon,
+  tone,
+  emphasis = false,
 }: {
-  buckets: SaldoBucket[];
+  title: string;
+  value: number;
   total: number;
+  hint?: string;
+  href: string;
+  cta: string;
+  icon: LucideIcon;
+  tone: "red" | "amber" | "orange" | "green";
+  emphasis?: boolean;
 }) {
+  const tones = {
+    red: "border-red-300 bg-red-50 text-red-900",
+    amber: "border-amber-200 bg-amber-50 text-amber-900",
+    orange: "border-orange-200 bg-orange-50 text-orange-900",
+    green: "border-emerald-200 bg-emerald-50 text-emerald-900",
+  };
+
   return (
-    <ChartCard
-      title="Distribuição do saldo 50K"
-      description="Ferramentais por faixa de saldo atual (limite − acúmulo de hoje)."
+    <Link
+      href={href}
+      className={`group flex flex-col justify-between rounded-lg border shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
+        tones[tone]
+      } ${emphasis ? "p-5 ring-1 ring-red-200 sm:col-span-2 lg:col-span-1" : "p-4"}`}
     >
-      {total === 0 ? (
-        <EmptyPanel>Nenhum ferramental no escopo atual.</EmptyPanel>
-      ) : (
-        <BarSeries
-          items={buckets.map((bucket) => ({
-            label: bucket.label,
-            value: bucket.count,
-            highlight: bucket.urgent ? bucket.count : 0,
-          }))}
-          highlightLabel="crítico"
-        />
-      )}
-    </ChartCard>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-xs font-semibold uppercase tracking-wide opacity-80">{title}</p>
+        <Icon className={emphasis ? "h-6 w-6" : "h-5 w-5"} />
+      </div>
+      <div className="mt-2">
+        <p className={`font-bold tabular-nums ${emphasis ? "text-5xl" : "text-4xl"}`}>
+          {formatNumber(value)}
+        </p>
+        <p className="mt-1 text-xs opacity-80">
+          {pctOf(value, total)} da frota{hint ? ` · ${hint}` : ""}
+        </p>
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-2 text-xs font-medium opacity-90">
+        <span>{cta}</span>
+        <ArrowRight className="h-4 w-4 shrink-0 transition group-hover:translate-x-0.5" />
+      </div>
+    </Link>
+  );
+}
+
+function ActionTable({ items }: { items: ToolProjection[] }) {
+  if (items.length === 0) {
+    return (
+      <EmptyPanel>Nenhum ferramental vencido, em preventiva ou em atenção no momento.</EmptyPanel>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">
+                Ferramental
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-slate-500">
+                Batidas
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-slate-500">
+                Saldo atual
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">
+                Status
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">
+                Atinge
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">
+                Ação
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {items.map((item) => {
+              const strokes = Math.round(item.preventiveLimit - item.currentRemainingStrokes);
+              return (
+                <tr key={item.toolId} className="hover:bg-slate-50">
+                  <td className="px-4 py-3">
+                    <p className="font-medium text-slate-900">{item.code}</p>
+                    {item.description && (
+                      <p
+                        className="mt-0.5 max-w-56 truncate text-xs text-slate-500"
+                        title={item.description}
+                      >
+                        {item.description}
+                      </p>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums text-slate-700">
+                    {formatNumber(strokes)}
+                  </td>
+                  <td
+                    className={`px-4 py-3 text-right font-semibold tabular-nums ${
+                      item.currentRemainingStrokes < 0
+                        ? "text-red-600"
+                        : item.currentRemainingStrokes < 5000
+                        ? "text-orange-600"
+                        : "text-slate-900"
+                    }`}
+                  >
+                    {formatNumber(Math.round(item.currentRemainingStrokes))}
+                  </td>
+                  <td className="px-4 py-3">
+                    <StatusBadge status={item.effectiveStatus} />
+                    {item.statusFromEstimate && (
+                      <span className="ml-1 align-middle text-[10px] font-medium text-slate-400">
+                        est.
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-slate-600">{item.reachesLimitInMonth ?? "—"}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-2">
+                      {ACTION_STATUS.includes(item.effectiveStatus) && (
+                        <Link
+                          href={`/manutencoes/nova?toolId=${item.toolId}`}
+                          className="rounded-md bg-orange-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-orange-700"
+                        >
+                          Registrar manutenção
+                        </Link>
+                      )}
+                      <Link
+                        href={`/controle-50k?search=${encodeURIComponent(item.code)}`}
+                        className="rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                      >
+                        Ver 50K
+                      </Link>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
@@ -285,12 +304,16 @@ function ReadingHealth({
     <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
         <Link href="/leituras" className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-900">
-          <p className="text-xs font-semibold uppercase tracking-wide opacity-70">Sem leitura real no ciclo</p>
+          <p className="text-xs font-semibold uppercase tracking-wide opacity-70">
+            Sem leitura real no ciclo
+          </p>
           <p className="mt-2 text-3xl font-bold tabular-nums">{formatNumber(missingReadings)}</p>
           <p className="mt-2 text-xs opacity-75">Status usando estimativa como fallback.</p>
         </Link>
         <Link href="/leituras" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900">
-          <p className="text-xs font-semibold uppercase tracking-wide opacity-70">Leituras defasadas</p>
+          <p className="text-xs font-semibold uppercase tracking-wide opacity-70">
+            Leituras defasadas
+          </p>
           <p className="mt-2 text-3xl font-bold tabular-nums">{formatNumber(staleReadingCount)}</p>
           <p className="mt-2 text-xs opacity-75">Mais de 30 dias sem nova medição.</p>
         </Link>
@@ -403,21 +426,89 @@ function RecentMaintenances({
   );
 }
 
+function MonthMaintenanceCard({
+  total,
+  byType,
+  previous,
+}: {
+  total: number;
+  byType: { preventiva: number; corretiva: number; outras: number };
+  previous: number;
+}) {
+  const delta = total - previous;
+  const deltaLabel =
+    delta === 0 ? "igual ao mês anterior" : `${delta > 0 ? "+" : ""}${delta} vs. mês anterior`;
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        Manutenções no mês
+      </p>
+      <p className="mt-2 text-4xl font-bold tabular-nums text-slate-900">{formatNumber(total)}</p>
+      <p className="mt-1 text-xs text-slate-400">{deltaLabel}</p>
+      <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
+        <div className="rounded-md border border-blue-200 bg-blue-50 py-2">
+          <dt className="text-[10px] font-medium uppercase text-blue-700">Preventivas</dt>
+          <dd className="text-lg font-bold tabular-nums text-blue-900">{byType.preventiva}</dd>
+        </div>
+        <div className="rounded-md border border-red-200 bg-red-50 py-2">
+          <dt className="text-[10px] font-medium uppercase text-red-700">Corretivas</dt>
+          <dd className="text-lg font-bold tabular-nums text-red-900">{byType.corretiva}</dd>
+        </div>
+        <div className="rounded-md border border-slate-200 bg-slate-50 py-2">
+          <dt className="text-[10px] font-medium uppercase text-slate-500">Outras</dt>
+          <dd className="text-lg font-bold tabular-nums text-slate-700">{byType.outras}</dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
+function toSaldoBars(buckets: SaldoBucket[]): HorizontalBarItem[] {
+  return buckets.map((bucket) => ({
+    key: bucket.label,
+    label: bucket.label,
+    value: bucket.count,
+    color: SALDO_COLORS[bucket.label] ?? "#64748b",
+  }));
+}
+
+function toStatusBars(slices: StatusSlice[]): HorizontalBarItem[] {
+  return [...slices]
+    .sort((a, b) => STATUS_PRIORITY[a.key] - STATUS_PRIORITY[b.key])
+    .map((slice) => ({
+      key: slice.key,
+      label: slice.label,
+      value: slice.value,
+      color: slice.color,
+    }));
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ press?: string; line?: string }>;
+  searchParams: Promise<{ press?: string; line?: string; mtool?: string }>;
 }) {
   const params = await searchParams;
   const filter = { press: params.press, line: params.line };
-  const data = await getDashboardData(filter);
+  const [data, maintenanceToolOptions, maintenanceHistory, maintenanceTrend] = await Promise.all([
+    getDashboardData(filter),
+    getToolMaintenanceOptions(),
+    params.mtool ? getToolMaintenanceHistory(params.mtool) : Promise.resolve(null),
+    getMaintenanceMonthlyTrend(),
+  ]);
   const isFiltered = Boolean(filter.press || filter.line);
+  const total = data.counts.total;
+  const generatedAt = new Date().toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Dashboard"
-        description="Painel rápido de riscos, prioridades e saúde dos dados do ciclo 50K."
+        title="Controle 50K"
+        description="Visão geral da situação dos ferramentais."
         action={
           <div className="flex flex-wrap items-center justify-end gap-3">
             <Link
@@ -435,7 +526,16 @@ export default async function DashboardPage({
           </div>
         }
       />
-
+      <Section
+        title="Histórico de manutenções por ferramental"
+        description="Escolha um ferramental para ver o ciclo dele em relação aos limites de 45k e 50k."
+      >
+        <ToolMaintenanceChart
+          options={maintenanceToolOptions}
+          history={maintenanceHistory}
+          selectedToolId={params.mtool}
+        />
+      </Section>
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
         <DashboardFilters
           presses={data.filterOptions.presses}
@@ -445,116 +545,141 @@ export default async function DashboardPage({
         <span className="text-xs text-slate-500">
           {isFiltered ? (
             <>
-              Escopo: <strong className="text-slate-700">{formatNumber(data.counts.total)}</strong> ferramentais
+              Escopo: <strong className="text-slate-700">{formatNumber(total)}</strong> ferramentais
             </>
           ) : (
             <>
-              <strong className="text-slate-700">{formatNumber(data.counts.total)}</strong> ferramentais ativos
+              <strong className="text-slate-700">{formatNumber(total)}</strong> ferramentais ativos
             </>
           )}
+          <span className="ml-2 text-slate-400">· dados de {generatedAt}</span>
         </span>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+      {/* 1. AÇÃO — KPIs principais */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
-          title="Total"
-          value={data.counts.total}
-          description="Ferramentais ativos"
-          href="/controle-50k"
-          icon={Gauge}
-          tone="default"
-        />
-        <KpiCard
-          title="OK"
-          value={data.counts.ok}
-          description="Sem ação imediata"
-          href={priorityHref("OK")}
-          icon={CheckCircle2}
-          tone="green"
+          title="Vencidos"
+          value={data.counts.vencido}
+          total={total}
+          hint="intervenção urgente"
+          href={priorityHref("VENCIDO")}
+          cta="Intervir agora"
+          icon={XCircle}
+          tone="red"
+          emphasis
         />
         <KpiCard
           title="Atenção"
           value={data.counts.atencao}
-          description="Monitorar de perto"
+          total={total}
+          hint="monitorar de perto"
           href={priorityHref("ATENCAO")}
-          icon={AlertTriangle}
-          tone="yellow"
+          cta="Monitorar"
+          icon={TriangleAlert}
+          tone="amber"
         />
         <KpiCard
-          title="Preventiva"
+          title="Preventivas"
           value={data.counts.programar}
-          description="Agendar manutenção"
+          total={total}
+          hint="agendar manutenção"
           href={priorityHref("PROGRAMAR_PREVENTIVA")}
-          icon={CalendarClock}
+          cta="Agendar"
+          icon={Wrench}
           tone="orange"
         />
         <KpiCard
-          title="Vencidos"
-          value={data.counts.vencido}
-          description="Intervenção urgente"
-          href={priorityHref("VENCIDO")}
-          icon={XCircle}
-          tone="red"
-        />
-        <KpiCard
-          title="Manutenções"
-          value={data.maintenancesThisMonth}
-          description="Registradas no mês"
-          href="/manutencoes"
-          icon={Wrench}
-          tone="blue"
+          title="Frota monitorada"
+          value={total}
+          total={total}
+          hint={`${formatNumber(data.counts.ok)} OK`}
+          href="/controle-50k"
+          cta="Ver Controle 50K"
+          icon={CheckCircle2}
+          tone="green"
         />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        <SaldoDistributionCard buckets={data.saldoDistribution} total={data.counts.total} />
-
-        <ChartCard
-          title="Distribuição por status"
-          description="Participação de cada status na frota em escopo."
-        >
-          {data.counts.total === 0 ? (
-            <EmptyPanel>Nenhum ferramental no escopo atual.</EmptyPanel>
-          ) : (
-            <Donut slices={data.statusDistribution} />
-          )}
-        </ChartCard>
-
-        <ChartCard
-          title="Manutenções previstas"
-          description="Ferramentais que cruzam o limite por mês."
-          action={
-            <Link href="/controle-50k?sort=real_asc" className="text-xs font-medium text-blue-600 hover:text-blue-700">
-              Detalhar
-            </Link>
-          }
-        >
-          {data.planningBuckets.length === 0 ? (
-            <EmptyPanel>Nenhum ferramental alcança o limite na janela calculada.</EmptyPanel>
-          ) : (
-            <BarSeries
-              items={data.planningBuckets.map((bucket) => ({
-                label: bucket.label.replace(/\/(\d{2})(\d{2})$/, "/$2"),
-                value: bucket.count,
-                highlight: bucket.urgent,
-                href: `/controle-50k?reachesMonth=${encodeURIComponent(bucket.label)}`,
-              }))}
-            />
-          )}
-        </ChartCard>
-      </div>
-
+      {/* 2. Ferramentais que exigem ação */}
       <Section
-        title="Fila de ação"
+        title="Ferramentais que exigem ação"
         description="Prioridade por status e menor saldo 50K atual."
         action={
-          <Link href="/controle-50k?sort=real_asc" className="text-sm font-medium text-blue-600 hover:text-blue-700">
-            Ver tabela completa
+          <Link
+            href="/controle-50k?sort=real_asc"
+            className="text-sm font-medium text-blue-600 hover:text-blue-700"
+          >
+            Ver todos
           </Link>
         }
       >
         <ActionTable items={data.actionQueue} />
       </Section>
+
+      {/* 3. Manutenções previstas */}
+      <Section
+        title="Manutenções previstas"
+        description="O que precisa entrar no plano, por prioridade."
+        action={
+          <Link
+            href="/controle-50k?sort=real_asc"
+            className="text-sm font-medium text-blue-600 hover:text-blue-700"
+          >
+            Detalhar
+          </Link>
+        }
+      >
+        <MaintenanceForecastPanel forecast={data.maintenanceForecast} />
+      </Section>
+
+      {/* 4. DISTRIBUIÇÃO */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ChartCard
+          title="Distribuição do saldo 50K"
+          description="Ferramentais por faixa de saldo disponível. Saldo = 50.000 − acúmulo atual."
+        >
+          {total === 0 ? (
+            <EmptyPanel>Nenhum ferramental no escopo atual.</EmptyPanel>
+          ) : (
+            <HorizontalBars items={toSaldoBars(data.saldoDistribution)} total={total} />
+          )}
+        </ChartCard>
+
+        <ChartCard
+          title="Distribuição por status"
+          description="Participação de cada status na frota em escopo (mais crítico primeiro)."
+        >
+          {total === 0 ? (
+            <EmptyPanel>Nenhum ferramental no escopo atual.</EmptyPanel>
+          ) : (
+            <HorizontalBars items={toStatusBars(data.statusDistribution)} total={total} />
+          )}
+        </ChartCard>
+      </div>
+
+      {/* 5. TENDÊNCIA de manutenção */}
+      <div className="grid gap-4 lg:grid-cols-[0.9fr_1.6fr]">
+        <MonthMaintenanceCard
+          total={data.maintenancesThisMonth}
+          byType={data.maintenancesByType}
+          previous={data.maintenancesPrevMonth}
+        />
+        <ChartCard
+          title="Manutenções — últimos 12 meses"
+          description="Preventivas vs. corretivas por mês. Um aumento de corretivas indica falha não planejada."
+          action={
+            <Link href="/manutencoes" className="text-xs font-medium text-blue-600 hover:text-blue-700">
+              Abrir histórico
+            </Link>
+          }
+        >
+          <MaintenanceTrendChart data={maintenanceTrend} />
+        </ChartCard>
+      </div>
+
+      {/* 6. Histórico por ferramental */}
+
 
       <Section
         title="Saúde das leituras"
@@ -566,14 +691,14 @@ export default async function DashboardPage({
           staleReadingCount={data.staleReadingCount}
         />
       </Section>
-
+{/* 
       <Section
         title="Qualidade dos dados"
         description="Pontos que podem distorcer previsão, saldo ou status."
       >
         <QualityIssues issues={data.qualityIssues} />
       </Section>
-
+ */}
       <Section
         title="Manutenções recentes"
         description="Últimos registros do mês corrente."
@@ -586,7 +711,7 @@ export default async function DashboardPage({
         <RecentMaintenances maintenances={data.recentMaintenances} />
       </Section>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-sm">
+      {/* <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-sm">
         <div className="flex items-start gap-3">
           <ClipboardList className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
           <div>
@@ -596,9 +721,8 @@ export default async function DashboardPage({
               cálculo, simular datas, exportar relatórios e analisar a projeção completa.
             </p>
           </div>
-          <Activity className="ml-auto hidden h-5 w-5 shrink-0 text-slate-300 sm:block" />
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }

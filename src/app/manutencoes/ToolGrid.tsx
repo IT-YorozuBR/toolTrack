@@ -98,7 +98,6 @@ export function ToolGrid({ tools, currentPage, totalPages, total, search }: Prop
                 {tool.description && (
                   <p className="text-xs text-gray-400 mt-0.5 truncate">{tool.description}</p>
                 )}
-                <p className="text-xs text-gray-500 mt-1">{tool.press}</p>
 
                 <div className="flex items-center gap-2 mt-3">
                   <span

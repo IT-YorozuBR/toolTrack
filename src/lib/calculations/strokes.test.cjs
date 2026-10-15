@@ -573,3 +573,55 @@ describe("Controle 50K projection", () => {
     assert.strictEqual(julyWindow.strokes, 499.5); // override: 999 * quantityUsed(1) / shotsPerStroke(2) — prevalece sobre os 10000 do ProjectForecast
   });
 });
+
+describe("Manutenção agendada (reset virtual)", () => {
+  const today = monthDate(2026, 5, 20);
+  const pending = { id: "sch-1", referenceMonth: monthDate(2026, 5, 1) };
+
+  it("zera o acúmulo e o status como se a manutenção já tivesse ocorrido", () => {
+    const base = makeTool({ currentStrokes: 48000 });
+    const withoutSchedule = getToolProjection(base, today);
+    const withSchedule = getToolProjection({ ...base, scheduledMaintenances: [pending] }, today);
+
+    assert.equal(withoutSchedule.status, "PROGRAMAR_PREVENTIVA");
+    assert.equal(withSchedule.estimatedAccumulated, 0);
+    assert.equal(withSchedule.status, "OK");
+    assert.equal(withSchedule.effectiveStatus, "OK");
+    assert.deepEqual(withSchedule.scheduledMaintenance, {
+      id: "sch-1",
+      referenceMonth: pending.referenceMonth.toISOString(),
+      overdue: false,
+    });
+  });
+
+  it("sem agendamento, nada muda", () => {
+    const projection = getToolProjection(makeTool({ currentStrokes: 1234 }), today);
+    assert.equal(projection.scheduledMaintenance, null);
+    assert.equal(projection.estimatedAccumulated, 1234);
+  });
+
+  it("não altera a última manutenção real exibida", () => {
+    const tool = makeTool({
+      maintenanceRecords: [{ maintenanceDate: monthDate(2026, 3, 5), resetCounter: true }],
+    });
+    const projection = getToolProjection({ ...tool, scheduledMaintenances: [pending] }, today);
+    assert.equal(projection.lastMaintenanceDate, "2026-03-05T12:00:00.000Z");
+    assert.equal(projection.estimatedAccumulated, 0);
+  });
+
+  it("ignora leituras manuais anteriores ao reset virtual", () => {
+    const tool = makeTool({
+      strokeReadings: [{ readingDate: monthDate(2026, 5, 10), cycleStrokes: 47000 }],
+    });
+    const projection = getToolProjection({ ...tool, scheduledMaintenances: [pending] }, today);
+    assert.equal(projection.realCycleStrokes, null);
+    assert.equal(projection.effectiveStatus, "OK");
+  });
+
+  it("marca como atrasada quando o mês agendado já passou", () => {
+    const old = { id: "sch-2", referenceMonth: monthDate(2026, 3, 1) };
+    const projection = getToolProjection({ ...makeTool(), scheduledMaintenances: [old] }, today);
+    assert.equal(projection.scheduledMaintenance.overdue, true);
+    assert.equal(projection.estimatedAccumulated, 0);
+  });
+});

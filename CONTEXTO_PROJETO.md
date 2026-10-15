@@ -29,6 +29,10 @@ coisa mudando, é histórico (ver `DEPLOY.md`, seção "Visão geral").
   acesso, ver seção 6).
 - Testes: `npm test` roda `src/lib/calculations/strokes.test.cjs` (node --test, sem
   framework externo) — cobre a lógica de cálculo de batidas.
+- **Gráficos**: `recharts` (adicionado no redesign do dashboard). Componentes client em
+  `src/components/charts/` — `HorizontalBars.tsx` (barras horizontais proporcionais, usadas
+  no dashboard) e `MaintenanceTrendChart.tsx` (linha 12 meses). Os antigos `Donut.tsx` e
+  `BarSeries.tsx` (SVG/div à mão) continuam no repo mas não são mais usados pelo dashboard.
 - Deploy: Docker Compose num servidor Proxmox, deploy por código-fonte (clona do GitHub e
   builda a imagem no servidor). Detalhes completos em `DEPLOY.md` (inclui rollback rápido
   por tag de imagem) e `DOCKER.md`.
@@ -71,6 +75,20 @@ cada nível e um mecanismo de exceção pontual.
   data/batidas/contador alterados (ver seção 5), porque a reversão do contador só é
   bem-definida para o último evento do ciclo. Guarda `previousStrokes` (acúmulo exato
   antes do reset) para permitir reversão exata.
+- **`ScheduledMaintenance`** — agendamento de preventiva para um **mês** (só mês, sem dia;
+  só tipo Preventiva). Status `PENDING | CONFIRMED | CANCELLED`; no máximo um `PENDING` por
+  ferramenta (índice único parcial na migration `20261013120000_add_scheduled_maintenance`).
+  **Não grava nada no ferramental**: enquanto `PENDING`, `getToolProjection` simula um reset
+  virtual em "hoje" (acúmulo zerado, leituras anteriores ignoradas, status OK); campos de
+  exibição como `lastMaintenanceDate` continuam sendo os reais. Cancelar só muda o status
+  (estado anterior volta exato); confirmar chama `createMaintenanceRecord` (preventiva real,
+  zera contador) e guarda `maintenanceRecordId`. Se o mês agendado passou sem resolução, segue
+  `PENDING` e aparece como "atrasado" (`scheduledMaintenance.overdue`) — decisão: só alerta,
+  não reverte sozinho. Ver `src/lib/actions/scheduled-maintenance.ts`.
+  **Fuso:** `referenceMonth` é ancorado em `Date.UTC(y, m-1, 1, 12)` (igual aos volumes) e exibido
+  com `getUTC*`/`timeZone: "UTC"`. Antes era `new Date(y, m-1, 1)` (meia-noite local do servidor
+  = 00:00Z) e o navegador em UTC-3 mostrava o mês anterior. Linhas antigas (00:00Z) exibem certo
+  por causa da leitura em UTC.
 - **`ToolMonthlyStrokeSnapshot`** — snapshot mensal de batidas por ferramenta (fechado ou
   projetado), usado para reconstruir histórico e re-ancorar cálculos depois de uma
   manutenção que zera o contador.
@@ -86,13 +104,13 @@ cada nível e um mecanismo de exceção pontual.
 |---|---|
 | `/` | redireciona para `/controle-50k` (tela principal) |
 | `/controle-50k` | tela principal: lista ferramentas com status (ok/atenção/preventiva), filtros por prensa/status/busca, projeção de batidas, ação rápida de registrar manutenção |
-| `/dashboard` | visão geral/indicadores |
+| `/dashboard` | painel operacional (redesenhado, ordem AÇÃO→SITUAÇÃO→DISTRIBUIÇÃO→PREVISÃO→TENDÊNCIA): KPIs Vencidos/Atenção/Preventivas/Frota com % da frota; tabela "Ferramentais que exigem ação"; "Manutenções previstas" (`MaintenanceForecastPanel.tsx` — blocos Urgente/7d/30d; os prazos em dias são **estimativa** derivada do ritmo projetado, `estimateDaysToPreventive` em `dashboard-data.ts`, não previsão do sistema, que é mensal); "Distribuição do saldo 50K" e "Distribuição por status" em barras horizontais proporcionais (`HorizontalBars`); card "Manutenções no mês" (preventiva/corretiva/outras + delta) e linha "últimos 12 meses" (`MaintenanceTrendChart` ← `getMaintenanceMonthlyTrend`); "Ciclo de manutenção" por ferramental (`ToolMaintenanceChart.tsx`, seletor via `?mtool=<toolId>`) — gráfico Recharts com **escala Y fixa 0–50.000** e linhas de referência em `warningLimit`/`preventiveLimit`, KPIs do ciclo (maior/menor ciclo, corretivas, utilização média = média de batidas ÷ limite), gráfico de intervalo entre manutenções e tabela. Dados em `dashboard-data.ts` (`getDashboardData`, `getToolMaintenanceOptions`, `getToolMaintenanceHistory`, `getMaintenanceMonthlyTrend`); `strokes.ts` não foi tocado. |
 | `/ferramentais` | CRUD de `Tool` (listar, criar, editar, excluir, ativar/desativar) |
 | `/produtos` | CRUD de `Product` |
 | `/projetos` | CRUD de `Project` e vínculo com produtos |
 | `/bom` | gerenciar `BomItem` (vínculo Produto↔Ferramenta) |
 | `/volumes` | árvore expansível Projeto→Produto→Ferramenta com edição de `BomItemForecastOverride`, busca global de ferramenta (ver detalhes em `CONTEXTO_DEMANDA_FERRAMENTAS.md`) |
-| `/manutencoes` | grade de ferramentais → histórico de manutenções por ferramenta (`MaintenanceList.tsx`), registrar nova (`nova/`), editar em modal (`EditMaintenanceModal.tsx`), excluir (só a mais recente) |
+| `/manutencoes` | grade de ferramentais → histórico de manutenções por ferramenta (`MaintenanceList.tsx`), registrar nova (`nova/`), editar em modal (`EditMaintenanceModal.tsx`), excluir (só a mais recente). Aba **Agendamento do mês** (`?view=agenda&month=YYYY-MM`, `AgendaView.tsx`): seleciona várias ferramentas para agendar a preventiva do mês, lista as agendadas com Confirmar realizada / Cancelar. No `/controle-50k` a linha agendada ganha selo 🗓 (vermelho se atrasada) e fundo azul; como o acúmulo é virtualmente zerado, ela desce na ordenação por saldo. |
 | `/leituras` | registrar `ToolStrokeReading` (leitura manual) |
 | `/fechamento-mensal` | fechamento/consolidação mensal de snapshots |
 | `/historico-demanda` | histórico de demanda |
@@ -118,9 +136,14 @@ cada nível e um mecanismo de exceção pontual.
   `EditMaintenanceModal.tsx`.
 - **Sem API REST para CRUD de domínio** — sempre usar Server Actions seguindo o padrão
   `{ success, data }` / `{ success: false, error }` já usado em todo `src/lib/actions/`.
+- **Ferramenta que carrega projeção precisa incluir** `scheduledMaintenances: { where: { status: "PENDING" }, take: 1 }` (controle-50k, dashboard, relatório 50k, ferramentais, tool-projection, agenda) — senão o agendamento não é refletido naquela tela.
 - **Sem divisão por zero** — guards em `calculateForecastedStrokes` e
   `getMaintenanceStatus` (ver `CHECKLIST_MVP.md`).
 - **Português com acentuação correta** em toda a UI.
+- **`allowedDevOrigins` em `next.config.ts`**: libera o bloqueio de cross-origin do
+  servidor de desenvolvimento (`next dev`) para IPs de rede local (192.168._._, 10._._._,
+  etc.), permitindo abrir o dev server de outra máquina. Só afeta `next dev`; `next build`/
+  `next start` (imagem Docker/produção) ignoram a opção.
 - **Rollback de deploy**: antes de cada build novo, a imagem atual é taggeada como backup
   (`docker tag prensa-stroke:latest prensa-stroke:backup-<data>`), permitindo reverter em
   segundos sem depender do `.tar` antigo — ver `DEPLOY.md`, seção "Rollback".

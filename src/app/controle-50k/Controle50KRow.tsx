@@ -9,6 +9,13 @@ import { ToolBreakdown } from "./ToolBreakdown";
 
 type WindowDate = { key: string; label: string; planningLabel: string; offset: number };
 
+const MONTHS_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+// Mês ancorado em UTC (ver CONTEXTO_PROJETO.md › ScheduledMaintenance).
+function scheduledMonthShort(iso: string): string {
+  return MONTHS_SHORT[new Date(iso).getUTCMonth()];
+}
+
 function formatDate(date: string | null): string {
   if (!date) return "—";
   return new Date(date).toLocaleDateString("pt-BR");
@@ -54,7 +61,11 @@ export function Controle50KRow({
     <>
       <tr
         className={`hover:bg-gray-50 ${
-          status === "VENCIDO"
+          p.scheduledMaintenance
+            ? p.scheduledMaintenance.overdue
+              ? "bg-red-50"
+              : "bg-sky-50"
+            : status === "VENCIDO"
             ? "bg-red-50"
             : status === "PROGRAMAR_PREVENTIVA"
             ? "bg-orange-50"
@@ -79,6 +90,18 @@ export function Controle50KRow({
               {p.description && (
                 <p className="mt-0.5 truncate text-[10px] text-gray-500" title={p.description}>
                   {p.description}
+                </p>
+              )}
+              {p.scheduledMaintenance && (
+                <p
+                  className={`mt-0.5 inline-block rounded px-1 py-0.5 text-[9px] font-semibold ring-1 ${
+                    p.scheduledMaintenance.overdue
+                      ? "bg-red-100 text-red-700 ring-red-300"
+                      : "bg-sky-100 text-sky-700 ring-sky-300"
+                  }`}
+                  title={`Preventiva agendada para ${new Date(p.scheduledMaintenance.referenceMonth).toLocaleDateString("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" })}. Enquanto pendente, o acúmulo é tratado como zerado. Confirme ou cancele em Manutenções › Agendamento do mês.`}
+                >
+                  {p.scheduledMaintenance.overdue ? "⚠ Agendamento atrasado" : "🗓 Manutenção agendada"} · {scheduledMonthShort(p.scheduledMaintenance.referenceMonth)}
                 </p>
               )}
               {p.errors.length > 0 && (
@@ -219,8 +242,17 @@ export function Controle50KRow({
           {p.reachesLimitInMonth ?? "—"}
         </td>
         <td className="px-3 py-2">
-          {(status === "PROGRAMAR_PREVENTIVA" || status === "VENCIDO") && (
-            <RegisterMaintenanceButton toolId={p.toolId} toolCode={p.code} />
+          {p.scheduledMaintenance ? (
+            <a
+              href="/manutencoes?view=agenda"
+              className="whitespace-nowrap rounded-md border border-sky-300 px-2 py-1 text-[10px] font-medium text-sky-700 hover:bg-sky-100"
+            >
+              Confirmar / cancelar
+            </a>
+          ) : (
+            (status === "PROGRAMAR_PREVENTIVA" || status === "VENCIDO") && (
+              <RegisterMaintenanceButton toolId={p.toolId} toolCode={p.code} />
+            )
           )}
         </td>
       </tr>

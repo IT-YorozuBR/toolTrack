@@ -65,6 +65,9 @@ export type ToolProjection = {
   statusFromEstimate: boolean;
   preventiveLimit: number;
   warningLimit: number;
+  // Manutenção preventiva agendada (PENDING): a projeção já trata o ferramental como zerado.
+  // overdue = o mês agendado já passou e ninguém confirmou/cancelou.
+  scheduledMaintenance: { id: string; referenceMonth: string; overdue: boolean } | null;
   status: MaintenanceStatus;
   reachesLimitInMonth?: string;
   window: WindowMonth[];
@@ -136,6 +139,9 @@ type ToolWithRelations = {
   maintenanceRecords: MaintenanceRecordForProjection[];
   monthlySnapshots?: MonthlySnapshotForProjection[];
   strokeReadings?: StrokeReadingForProjection[];
+  // Agendamentos PENDING (carregar com `where: { status: "PENDING" }`): se houver um, a
+  // projeção simula um reset hoje, sem gravar manutenção.
+  scheduledMaintenances?: { id: string; referenceMonth: Date }[];
 };
 
 // Acima deste número de dias sem nova leitura física, a leitura é considerada
@@ -492,10 +498,18 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
 
   const forecastedStrokes = window.reduce((sum, m) => sum + m.strokes, 0);
   const currentMonthForecastedStrokes = window.find((m) => m.offset === 0)?.strokes ?? 0;
-  const lastReset = getLastReset(tool);
-  const hasMaintenanceInReferenceMonth = lastReset ? isSameMonth(lastReset.maintenanceDate, today) : false;
-  const daysSinceReset = lastReset
-    ? Math.floor((today.getTime() - lastReset.maintenanceDate.getTime()) / 86_400_000)
+  // Reset real (histórico) — usado só para os campos de exibição. O reset EFETIVO usado nos
+  // cálculos é o virtual de hoje quando há agendamento PENDING: acúmulo zera, leituras
+  // anteriores são ignoradas e a projeção parte de zero, como se a manutenção já tivesse
+  // ocorrido. Nada é gravado; cancelar o agendamento restaura o cálculo original.
+  const realLastReset = getLastReset(tool);
+  const pendingSchedule = tool.scheduledMaintenances?.[0] ?? null;
+  const lastReset: MaintenanceRecordForProjection | undefined = pendingSchedule
+    ? { maintenanceDate: today, resetCounter: true, strokesAtMaintenance: 0 }
+    : realLastReset;
+  const hasMaintenanceInReferenceMonth = realLastReset ? isSameMonth(realLastReset.maintenanceDate, today) : false;
+  const daysSinceReset = realLastReset
+    ? Math.floor((today.getTime() - realLastReset.maintenanceDate.getTime()) / 86_400_000)
     : null;
   const cycleRecentlyReset = daysSinceReset !== null && daysSinceReset >= 0 && daysSinceReset <= RECENT_RESET_DAYS;
   const hasMonthlySnapshots = !!tool.monthlySnapshots?.length;
@@ -653,11 +667,11 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
     press: tool.press,
     line: tool.line,
     currentStrokes: tool.currentStrokes,
-    lastMaintenanceDate: lastReset?.maintenanceDate.toISOString() ?? null,
+    lastMaintenanceDate: realLastReset?.maintenanceDate.toISOString() ?? null,
     hasMaintenanceInReferenceMonth,
     daysSinceReset,
     cycleRecentlyReset,
-    strokesAtLastMaintenance: lastReset?.strokesAtMaintenance ?? null,
+    strokesAtLastMaintenance: realLastReset?.strokesAtMaintenance ?? null,
     estimatedStrokes,
     estimatedAccumulated,
     forecastedStrokes,
@@ -680,6 +694,13 @@ export function getToolProjection(tool: ToolWithRelations, referenceDate?: Date)
     statusFromEstimate,
     preventiveLimit: tool.preventiveLimit,
     warningLimit: tool.warningLimit,
+    scheduledMaintenance: pendingSchedule
+      ? {
+          id: pendingSchedule.id,
+          referenceMonth: pendingSchedule.referenceMonth.toISOString(),
+          overdue: startOfMonth(pendingSchedule.referenceMonth) < startOfMonth(today),
+        }
+      : null,
     status,
     reachesLimitInMonth,
     window,

@@ -5,6 +5,9 @@ import { ToolGrid } from "./ToolGrid";
 import { MaintenanceList } from "./MaintenanceList";
 import { ProjectMaintenanceTree } from "./ProjectMaintenanceTree";
 import { ViewToggle } from "./ViewToggle";
+import { AgendaView, type AgendaCandidate, type AgendaPending } from "./AgendaView";
+import { getAllToolsProjection, getToolProjection } from "@/lib/calculations/strokes";
+import { autoEnsureMonthlySnapshots } from "@/lib/actions/monthly-stroke-snapshots";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -14,9 +17,9 @@ const PAGE_SIZE = 20;
 export default async function ManutencoesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; page?: string; ferramenta?: string; view?: string }>;
+  searchParams: Promise<{ search?: string; page?: string; ferramenta?: string; view?: string; month?: string }>;
 }) {
-  const { search, page, ferramenta, view } = await searchParams;
+  const { search, page, ferramenta, view, month } = await searchParams;
 
   /* ── Vista de manutenções de um ferramental ── */
   if (ferramenta) {
@@ -80,6 +83,86 @@ export default async function ManutencoesPage({
       }
     />
   );
+
+  if (view === "agenda") {
+    await autoEnsureMonthlySnapshots();
+    const now = new Date();
+    const selectedMonth =
+      month && /^\d{4}-(0[1-9]|1[0-2])$/.test(month)
+        ? month
+        : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+    const tools = await prisma.tool.findMany({
+      where: { active: true },
+      include: {
+        bomItems: {
+          include: {
+            overrides: true,
+            product: {
+              include: {
+                forecasts: true,
+                projectProducts: { include: { project: { include: { forecasts: true } } } },
+              },
+            },
+          },
+        },
+        maintenanceRecords: {
+          where: { resetCounter: true },
+          orderBy: { maintenanceDate: "desc" },
+          take: 1,
+        },
+        monthlySnapshots: { orderBy: { referenceMonth: "asc" } },
+        strokeReadings: { orderBy: { readingDate: "desc" }, take: 12 },
+        scheduledMaintenances: { where: { status: "PENDING" }, take: 1 },
+      },
+      orderBy: { code: "asc" },
+    });
+
+    const candidates: AgendaCandidate[] = getAllToolsProjection(
+      tools.filter((t) => t.scheduledMaintenances.length === 0),
+    )
+      .map((p) => ({
+        toolId: p.toolId,
+        code: p.code,
+        description: p.description ?? null,
+        press: p.press,
+        saldo: Math.round(p.currentRemainingStrokes),
+        status: p.effectiveStatus,
+      }))
+      .sort((a, b) => a.saldo - b.saldo);
+
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const pending: AgendaPending[] = tools
+      .filter((t) => t.scheduledMaintenances.length > 0)
+      .map((t) => {
+        const sch = t.scheduledMaintenances[0];
+        // Acúmulo real: projeção ignorando o agendamento (a projeção normal já vem zerada).
+        const real = getToolProjection({ ...t, scheduledMaintenances: [] });
+        return {
+          id: sch.id,
+          toolId: t.id,
+          code: t.code,
+          description: t.description,
+          press: t.press,
+          referenceMonth: sch.referenceMonth.toISOString(),
+          overdue: sch.referenceMonth < currentMonthStart,
+          accumulated: Math.round(real.estimatedAccumulated),
+        };
+      })
+      .sort((a, b) => a.referenceMonth.localeCompare(b.referenceMonth) || a.code.localeCompare(b.code));
+
+    return (
+      <div>
+        {header}
+        <ViewToggle current="agenda" />
+        <AgendaView
+          candidates={candidates}
+          pending={pending}
+          month={selectedMonth}
+        />
+      </div>
+    );
+  }
 
   if (isTreeView) {
     const projects = await prisma.project.findMany({

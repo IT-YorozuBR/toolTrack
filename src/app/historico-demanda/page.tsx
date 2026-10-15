@@ -105,9 +105,6 @@ export default async function HistoricoDemandaPage({
                   <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase sticky left-0 bg-gray-50 min-w-[160px]">
                     Ferramental
                   </th>
-                  <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase min-w-[70px]">
-                    Prensa
-                  </th>
                   {monthWindow.map((m) => (
                     <th key={m.key} className="px-3 py-2 text-right text-[10px] font-medium text-gray-500 uppercase min-w-[80px]">
                       {m.label}
@@ -135,7 +132,6 @@ export default async function HistoricoDemandaPage({
                           </p>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-gray-600">{tool.press}</td>
                       {monthWindow.map((m) => {
                         const val = snapshotByKey.get(m.key);
                         return (

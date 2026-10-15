@@ -29,6 +29,26 @@ model Tool {
   maintenanceRecords MaintenanceRecord[]
   monthlySnapshots   ToolMonthlyStrokeSnapshot[]
   strokeReadings     ToolStrokeReading[]
+  scheduledMaintenances ScheduledMaintenance[]
+}
+
+// Agendamento de manutenção preventiva para um mês. NÃO altera contador nem histórico:
+// enquanto PENDING, a projeção trata o ferramental como se já tivesse sido zerado
+// (reset virtual). Confirmar cria o MaintenanceRecord real; cancelar só muda o status.
+// No máximo um PENDING por ferramental (índice único parcial na migration).
+model ScheduledMaintenance {
+  id                  String    @id @default(cuid())
+  toolId              String
+  referenceMonth      DateTime
+  status              String    @default("PENDING") // PENDING | CONFIRMED | CANCELLED
+  maintenanceRecordId String?
+  createdAt           DateTime  @default(now())
+  resolvedAt          DateTime?
+
+  tool Tool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@index([status, referenceMonth])
+  @@index([toolId])
 }
 
 model Project {

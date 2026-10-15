@@ -29,6 +29,7 @@ export async function fetchToolProjection(toolId: string): Promise<ToolProjectio
       monthlySnapshots: {
         orderBy: { referenceMonth: "asc" },
       },
+      scheduledMaintenances: { where: { status: "PENDING" }, take: 1 },
     },
   });
 

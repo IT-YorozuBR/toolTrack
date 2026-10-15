@@ -76,6 +76,251 @@ const PT_MONTH_IDX: Record<string, number> = {
 
 export type DashboardData = Awaited<ReturnType<typeof getDashboardData>>;
 
+export type ToolMaintenanceOption = {
+  id: string;
+  code: string;
+  description: string | null;
+  press: string;
+  preventiveLimit: number;
+  warningLimit: number;
+  count: number;
+};
+
+export type ToolMaintenancePoint = {
+  id: string;
+  date: string;
+  label: string;
+  type: string;
+  strokes: number;
+  resetCounter: boolean;
+  responsible: string | null;
+  notes: string | null;
+  daysSincePrevious: number | null;
+};
+
+export type ToolMaintenanceHistory = {
+  toolId: string;
+  code: string;
+  description: string | null;
+  press: string;
+  warningLimit: number;
+  preventiveLimit: number;
+  points: ToolMaintenancePoint[];
+  totalMaintenances: number;
+  avgIntervalDays: number | null;
+  minIntervalDays: number | null;
+  maxIntervalDays: number | null;
+  maxCycleStrokes: number | null;
+  minCycleStrokes: number | null;
+  correctiveCount: number;
+  avgCycleStrokes: number | null;
+  avgCycleUtilization: number | null;
+  lastMaintenanceDate: string | null;
+};
+
+const DAY_MS = 1000 * 60 * 60 * 24;
+
+const PT_MONTHS_SHORT = [
+  "Jan",
+  "Fev",
+  "Mar",
+  "Abr",
+  "Mai",
+  "Jun",
+  "Jul",
+  "Ago",
+  "Set",
+  "Out",
+  "Nov",
+  "Dez",
+];
+
+function monthKeyOf(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function shortMonthLabel(date: Date): string {
+  return `${PT_MONTHS_SHORT[date.getMonth()]}/${String(date.getFullYear()).slice(2)}`;
+}
+
+function daysInMonthKey(key: string): number {
+  const [year, month] = key.split("-").map(Number);
+  return new Date(year, month, 0).getDate();
+}
+
+/** Ferramentais que têm pelo menos uma manutenção registrada — alimenta o seletor. */
+export async function getToolMaintenanceOptions(): Promise<ToolMaintenanceOption[]> {
+  const tools = await prisma.tool.findMany({
+    where: { maintenanceRecords: { some: {} } },
+    select: {
+      id: true,
+      code: true,
+      description: true,
+      press: true,
+      preventiveLimit: true,
+      warningLimit: true,
+      _count: { select: { maintenanceRecords: true } },
+    },
+    orderBy: { code: "asc" },
+  });
+
+  return tools.map((tool) => ({
+    id: tool.id,
+    code: tool.code,
+    description: tool.description,
+    press: tool.press,
+    preventiveLimit: tool.preventiveLimit,
+    warningLimit: tool.warningLimit,
+    count: tool._count.maintenanceRecords,
+  }));
+}
+
+export type MaintenanceTrendPoint = {
+  key: string;
+  label: string;
+  preventivas: number;
+  corretivas: number;
+  outras: number;
+  total: number;
+};
+
+/** Contagem de manutenções por mês nos últimos 12 meses (inclui o mês corrente),
+ * separando preventivas de corretivas. Meses sem registro entram zerados. */
+export async function getMaintenanceMonthlyTrend(): Promise<MaintenanceTrendPoint[]> {
+  const now = new Date();
+  const firstMonth = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+
+  const records = await prisma.maintenanceRecord.findMany({
+    where: { maintenanceDate: { gte: firstMonth } },
+    select: { maintenanceDate: true, maintenanceType: true },
+  });
+
+  const buckets = new Map<string, MaintenanceTrendPoint>();
+  for (let i = 0; i < 12; i += 1) {
+    const monthDate = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1);
+    const key = monthKeyOf(monthDate);
+    buckets.set(key, {
+      key,
+      label: shortMonthLabel(monthDate),
+      preventivas: 0,
+      corretivas: 0,
+      outras: 0,
+      total: 0,
+    });
+  }
+
+  for (const record of records) {
+    const key = monthKeyOf(record.maintenanceDate);
+    const bucket = buckets.get(key);
+    if (!bucket) continue;
+    if (record.maintenanceType === "Corretiva") bucket.corretivas += 1;
+    else if (record.maintenanceType === "Preventiva") bucket.preventivas += 1;
+    else bucket.outras += 1;
+    bucket.total += 1;
+  }
+
+  return [...buckets.values()];
+}
+
+/** Histórico de manutenções de um ferramental, em ordem cronológica, com o intervalo
+ * (em dias) entre cada manutenção e a anterior. */
+export async function getToolMaintenanceHistory(
+  toolId: string,
+): Promise<ToolMaintenanceHistory | null> {
+  const tool = await prisma.tool.findUnique({
+    where: { id: toolId },
+    select: {
+      id: true,
+      code: true,
+      description: true,
+      press: true,
+      warningLimit: true,
+      preventiveLimit: true,
+      maintenanceRecords: {
+        orderBy: { maintenanceDate: "asc" },
+        select: {
+          id: true,
+          maintenanceDate: true,
+          strokesAtMaintenance: true,
+          maintenanceType: true,
+          responsible: true,
+          notes: true,
+          resetCounter: true,
+        },
+      },
+    },
+  });
+
+  if (!tool) return null;
+
+  const intervals: number[] = [];
+  const points: ToolMaintenancePoint[] = tool.maintenanceRecords.map((record, index) => {
+    const previous = index > 0 ? tool.maintenanceRecords[index - 1] : null;
+    const daysSincePrevious = previous
+      ? Math.round(
+          (record.maintenanceDate.getTime() - previous.maintenanceDate.getTime()) / DAY_MS,
+        )
+      : null;
+    if (daysSincePrevious !== null) intervals.push(daysSincePrevious);
+
+    return {
+      id: record.id,
+      date: record.maintenanceDate.toISOString(),
+      label: record.maintenanceDate.toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "2-digit",
+      }),
+      type: record.maintenanceType,
+      strokes: record.strokesAtMaintenance,
+      resetCounter: record.resetCounter,
+      responsible: record.responsible,
+      notes: record.notes,
+      daysSincePrevious,
+    };
+  });
+
+  const avgIntervalDays =
+    intervals.length > 0
+      ? Math.round(intervals.reduce((sum, value) => sum + value, 0) / intervals.length)
+      : null;
+  const minIntervalDays = intervals.length > 0 ? Math.min(...intervals) : null;
+  const maxIntervalDays = intervals.length > 0 ? Math.max(...intervals) : null;
+
+  const cycleStrokes = points.map((point) => point.strokes);
+  const maxCycleStrokes = cycleStrokes.length > 0 ? Math.max(...cycleStrokes) : null;
+  const minCycleStrokes = cycleStrokes.length > 0 ? Math.min(...cycleStrokes) : null;
+  const avgCycleStrokes =
+    cycleStrokes.length > 0
+      ? Math.round(cycleStrokes.reduce((sum, value) => sum + value, 0) / cycleStrokes.length)
+      : null;
+  const avgCycleUtilization =
+    avgCycleStrokes !== null && tool.preventiveLimit > 0
+      ? avgCycleStrokes / tool.preventiveLimit
+      : null;
+  const correctiveCount = points.filter((point) => point.type === "Corretiva").length;
+
+  return {
+    toolId: tool.id,
+    code: tool.code,
+    description: tool.description,
+    press: tool.press,
+    warningLimit: tool.warningLimit,
+    preventiveLimit: tool.preventiveLimit,
+    points,
+    totalMaintenances: points.length,
+    avgIntervalDays,
+    minIntervalDays,
+    maxIntervalDays,
+    maxCycleStrokes,
+    minCycleStrokes,
+    correctiveCount,
+    avgCycleStrokes,
+    avgCycleUtilization,
+    lastMaintenanceDate: points.length > 0 ? points[points.length - 1].date : null,
+  };
+}
+
 export type QualityIssue = {
   key: string;
   title: string;
@@ -113,6 +358,88 @@ function sortByOperationalRisk(a: ToolProjection, b: ToolProjection) {
 function getMaintenanceMonthStart() {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), 1);
+}
+
+/**
+ * Estimativa (não medição) de dias até o acúmulo cruzar o limite preventivo (50k),
+ * derivada do ritmo já projetado pelo sistema: total de batidas previstas na janela
+ * de 4 meses ÷ dias corridos dessa janela. Retorna null quando não há previsão
+ * (ritmo <= 0) — nesse caso não inventamos um número.
+ */
+function estimateDaysToPreventive(projection: ToolProjection): number | null {
+  const windowStrokes = projection.window.reduce((sum, month) => sum + month.strokes, 0);
+  const windowDays = projection.window.reduce((sum, month) => sum + daysInMonthKey(month.key), 0);
+  if (windowStrokes <= 0 || windowDays <= 0) return null;
+  const ratePerDay = windowStrokes / windowDays;
+  if (ratePerDay <= 0) return null;
+  const days = Math.round(projection.currentRemainingStrokes / ratePerDay);
+  return Math.max(-9999, Math.min(days, 720));
+}
+
+export type MaintenanceForecastRow = {
+  toolId: string;
+  code: string;
+  description: string | null;
+  press: string;
+  strokes: number;
+  saldo: number;
+  status: MaintenanceStatus;
+  estimatedDays: number | null;
+  bucket: "URGENTE" | "7_DIAS" | "30_DIAS";
+};
+
+export type MaintenanceForecast = {
+  urgent: number;
+  next7: number;
+  next30: number;
+  noEstimate: number;
+  rows: MaintenanceForecastRow[];
+};
+
+function buildMaintenanceForecast(projections: ToolProjection[]): MaintenanceForecast {
+  const urgent: MaintenanceForecastRow[] = [];
+  const next7: MaintenanceForecastRow[] = [];
+  const next30: MaintenanceForecastRow[] = [];
+  let noEstimate = 0;
+
+  for (const projection of projections) {
+    if (projection.status === "ERRO_CADASTRO") continue;
+    const status = statusOf(projection);
+    const estimatedDays = estimateDaysToPreventive(projection);
+    const row = {
+      toolId: projection.toolId,
+      code: projection.code,
+      description: projection.description ?? null,
+      press: projection.press,
+      strokes: Math.round(projection.preventiveLimit - projection.currentRemainingStrokes),
+      saldo: Math.round(projection.currentRemainingStrokes),
+      status,
+      estimatedDays,
+    };
+
+    if (status === "VENCIDO" || status === "PROGRAMAR_PREVENTIVA") {
+      urgent.push({ ...row, bucket: "URGENTE" });
+    } else if (estimatedDays !== null && estimatedDays >= 0 && estimatedDays <= 7) {
+      next7.push({ ...row, bucket: "7_DIAS" });
+    } else if (estimatedDays !== null && estimatedDays > 7 && estimatedDays <= 30) {
+      next30.push({ ...row, bucket: "30_DIAS" });
+    } else if (estimatedDays === null && Boolean(projection.reachesLimitInMonth)) {
+      noEstimate += 1;
+    }
+  }
+
+  const bySaldo = (a: MaintenanceForecastRow, b: MaintenanceForecastRow) => a.saldo - b.saldo;
+  urgent.sort(bySaldo);
+  next7.sort(bySaldo);
+  next30.sort(bySaldo);
+
+  return {
+    urgent: urgent.length,
+    next7: next7.length,
+    next30: next30.length,
+    noEstimate,
+    rows: [...urgent, ...next7, ...next30].slice(0, 10),
+  };
 }
 
 function getPlanningBuckets(projections: ToolProjection[]) {
@@ -266,6 +593,7 @@ export async function getDashboardData(filter: DashboardFilter = {}) {
     monthlySnapshots: {
       orderBy: { referenceMonth: "asc" as const },
     },
+    scheduledMaintenances: { where: { status: "PENDING" }, take: 1 },
     strokeReadings: {
       orderBy: { readingDate: "desc" as const },
       take: 12,
@@ -273,10 +601,17 @@ export async function getDashboardData(filter: DashboardFilter = {}) {
   } as const;
 
   const maintenanceMonthStart = getMaintenanceMonthStart();
+  const previousMonthStart = new Date(
+    maintenanceMonthStart.getFullYear(),
+    maintenanceMonthStart.getMonth() - 1,
+    1,
+  );
 
   const [
     tools,
     maintenancesThisMonth,
+    maintenanceTypeGroups,
+    maintenancesPrevMonth,
     recentMaintenances,
     toolsWithoutBom,
     productsWithoutBom,
@@ -291,6 +626,16 @@ export async function getDashboardData(filter: DashboardFilter = {}) {
     prisma.maintenanceRecord.count({
       where: {
         maintenanceDate: { gte: maintenanceMonthStart },
+      },
+    }),
+    prisma.maintenanceRecord.groupBy({
+      by: ["maintenanceType"],
+      where: { maintenanceDate: { gte: maintenanceMonthStart } },
+      _count: { _all: true },
+    }),
+    prisma.maintenanceRecord.count({
+      where: {
+        maintenanceDate: { gte: previousMonthStart, lt: maintenanceMonthStart },
       },
     }),
     prisma.maintenanceRecord.findMany({
@@ -356,6 +701,15 @@ export async function getDashboardData(filter: DashboardFilter = {}) {
   const planningBuckets = getPlanningBuckets(projections);
   const statusDistribution = buildStatusDistribution(projections);
   const saldoDistribution = buildSaldoDistribution(projections);
+  const maintenanceForecast = buildMaintenanceForecast(projections);
+
+  const maintenancesByType = { preventiva: 0, corretiva: 0, outras: 0 };
+  for (const group of maintenanceTypeGroups) {
+    const amount = group._count._all;
+    if (group.maintenanceType === "Preventiva") maintenancesByType.preventiva += amount;
+    else if (group.maintenanceType === "Corretiva") maintenancesByType.corretiva += amount;
+    else maintenancesByType.outras += amount;
+  }
 
   const qualityIssues = buildQualityIssues({
     projections,
@@ -382,6 +736,9 @@ export async function getDashboardData(filter: DashboardFilter = {}) {
     missingReadings,
     staleReadingCount,
     maintenancesThisMonth,
+    maintenancesByType,
+    maintenancesPrevMonth,
+    maintenanceForecast,
     recentMaintenances: recentMaintenanceRows,
     planningBuckets,
     qualityIssues,

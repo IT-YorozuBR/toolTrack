@@ -50,6 +50,7 @@ export default async function FerramentaisPage({
       take: 1,
     },
     monthlySnapshots: { orderBy: { referenceMonth: "asc" as const } },
+    scheduledMaintenances: { where: { status: "PENDING" }, take: 1 },
     strokeReadings: { orderBy: { readingDate: "desc" as const } },
   } as const;
 
