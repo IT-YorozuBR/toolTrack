@@ -3,6 +3,11 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateMaintenanceRecord } from "@/lib/actions/maintenance";
 import { SubmitButton } from "@/components/ui/SubmitButton";
+import {
+  buildMaintenanceChange,
+  toDateInputValue,
+  type PendingChange,
+} from "./buildMaintenanceChange";
 
 const MAINTENANCE_TYPES = ["Preventiva", "Corretiva", "Inspeção", "Ajuste"];
 
@@ -16,19 +21,6 @@ type MaintenanceRecord = {
   notes: string | null;
 };
 
-function toDateInputValue(date: Date) {
-  return new Date(date).toISOString().split("T")[0];
-}
-
-type PendingChange = {
-  maintenanceDate: Date;
-  strokesAtMaintenance: number;
-  maintenanceType: string;
-  responsible?: string;
-  notes?: string;
-  resetCounter: boolean;
-  cycleFieldsChanged: boolean;
-};
 
 export function EditMaintenanceModal({
   record,
@@ -49,25 +41,7 @@ export function EditMaintenanceModal({
   // pendente e pede confirmação explícita antes de alterar em definitivo.
   function handleSubmit(formData: FormData) {
     setError(null);
-    const dateStr = formData.get("maintenanceDate") as string;
-    const maintenanceDate = new Date(dateStr + "T12:00:00");
-    const strokesAtMaintenance = parseInt(formData.get("strokesAtMaintenance") as string);
-
-    const cycleFieldsChanged =
-      isLatest &&
-      (record.maintenanceDate.getTime() !== maintenanceDate.getTime() ||
-        record.strokesAtMaintenance !== strokesAtMaintenance ||
-        record.resetCounter !== resetCounter);
-
-    setPending({
-      maintenanceDate,
-      strokesAtMaintenance,
-      maintenanceType: formData.get("maintenanceType") as string,
-      responsible: (formData.get("responsible") as string) || undefined,
-      notes: (formData.get("notes") as string) || undefined,
-      resetCounter,
-      cycleFieldsChanged,
-    });
+    setPending(buildMaintenanceChange(record, isLatest, resetCounter, formData));
   }
 
   function handleConfirm() {

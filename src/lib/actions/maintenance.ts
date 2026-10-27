@@ -203,8 +203,8 @@ export async function updateMaintenanceRecord(
         where: { id },
         data: {
           maintenanceType: data.maintenanceType,
-          responsible: data.responsible,
-          notes: data.notes,
+          responsible: data.responsible ?? null,
+          notes: data.notes ?? null,
         },
       });
       await logAudit({

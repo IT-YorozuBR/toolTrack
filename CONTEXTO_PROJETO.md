@@ -130,7 +130,14 @@ cada nível e um mecanismo de exceção pontual.
   são permitidas na manutenção **mais recente** de cada ferramenta
   (`src/lib/actions/maintenance.ts` — `deleteMaintenanceRecord`,
   `updateMaintenanceRecord`). Campos "seguros" (tipo, responsável, observação) podem ser
-  editados em qualquer registro.
+  editados em qualquer registro — nesse caminho (`cycleFieldsChanged = false`) a action só
+  faz `update` dos 3 campos: não mexe em `currentStrokes`, snapshots nem recalcula nada.
+  Bug corrigido: inputs `disabled` (data/batidas em registro não-mais-recente) não vão no
+  `FormData`, o que gerava `Invalid Date`/`NaN` e o erro "só é possível alterar…"; o modal
+  agora reenvia os valores originais do registro nesse caso. Essa lógica vive em
+  `src/app/manutencoes/buildMaintenanceChange.ts` (função pura). Testes (`node --test`):
+  `buildMaintenanceChange.test.cjs` e `src/lib/actions/maintenance.test.cjs` (action com
+  prisma/audit/revalidatePath mockados via `Module._load`).
 - **Edição de manutenção pede confirmação explícita** antes de gravar, com mensagem
   diferente conforme o impacto (mudança de ciclo vs. só metadados) —
   `EditMaintenanceModal.tsx`.
